@@ -1,0 +1,22 @@
+# Bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env
+
+# Poetry virtualenv
+.poetry/
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+
+# Output directory
+outputs/
+
+# Python-related
+*.egg-info/
+*.egg
+*.log
