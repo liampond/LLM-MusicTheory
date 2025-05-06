@@ -4,8 +4,9 @@ from models.chatgpt import ChatGPTModel
 from models.gemini import GeminiModel
 from models.claude import ClaudeModel
 from models.deepseek import DeepSeekModel
+from models.base import LLMInterface
 
-def get_llm(model_name: str):
+def get_llm(model_name: str) -> LLMInterface:
     """
     Return an instance of the LLM wrapper class for the given model string.
     Example: 'chatgpt', 'gemini', 'claude', 'deepseek'

@@ -1,37 +1,50 @@
-# cli/run_single.py
-
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import argparse
-from llm_music_theory.core.dispatcher import get_llm
-from models.base import PromptInput
+from pathlib import Path
+from dotenv import load_dotenv
+import os
 
+from core.dispatcher import get_llm
+from core.runner import PromptRunner
 
+# --- Load environment variables ---
+load_dotenv()
 
-def main():
-    parser = argparse.ArgumentParser(description="Run a single LLM prompt")
-    parser.add_argument("--model", required=True, help="Model name: chatgpt, gemini, claude, deepseek")
-    parser.add_argument("--question", required=True, help="Question ID (e.g. Q4b)")
-    parser.add_argument("--format", required=True, help="Encoding format (e.g. mei, abc, krn, musicxml)")
-    parser.add_argument("--context", action="store_true", help="Use context version of question")
+# --- CLI Argument Parser ---
+parser = argparse.ArgumentParser(description="Run a single LLM music theory prompt.")
+parser.add_argument("--question", required=True, help="Question number (e.g. Q1a)")
+parser.add_argument("--datatype", required=True, choices=["mei", "musicxml", "abc", "humdrum"], help="Encoding format")
+parser.add_argument("--context", action="store_true", help="Include context guides")
+parser.add_argument("--examdate", default="August2024", help="Exam version or folder name")
+parser.add_argument("--temperature", type=float, default=0.0, help="LLM temperature (default=0.0)")
+parser.add_argument("--model", required=True, choices=["chatgpt", "claude", "gemini", "deepseek"], help="Which LLM to use")
+args = parser.parse_args()
 
-    args = parser.parse_args()
+# --- Base Directories ---
+base_path = Path(__file__).resolve().parent.parent
+base_dirs = {
+    "prompts": base_path / "prompts",
+    "questions": base_path / "prompts" / "questions",
+    "guides": base_path / "prompts" / "guides",
+    "encoded": base_path / "encoded"
+}
 
-    # This is the key line: it gives you the correct model class
-    llm = get_llm(args.model)
+# --- Load model ---
+model = get_llm(args.model)
 
-    # Example prompt
-    prompt = PromptInput(
-        system_prompt="You are a helpful assistant.",
-        user_prompt="What is a cadence in music theory?",
-        temperature=0.3
-    )
+# --- Initialize and run the prompt ---
+runner = PromptRunner(
+    model=model,
+    question_number=args.question,
+    datatype=args.datatype,
+    context=args.context,
+    exam_date=args.examdate,
+    base_dirs=base_dirs,
+    temperature=args.temperature
+)
 
-    response = llm.query(prompt)
-    print("Response:\n", response)
+print(f"\n🧠 Running {args.question} [{args.datatype.upper()}] (context: {args.context})...")
+response = runner.run()
 
-
-if __name__ == "__main__":
-    main()
+# --- Output ---
+print("\n📝 Model Response:\n")
+print(response)
