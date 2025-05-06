@@ -1,16 +1,25 @@
-from pathlib import Path
-from typing import Dict, List
+# core/runner.py
 
-from models.base import LLMInterface
-from models.base import PromptInput
-from prompts.prompt_builder import PromptBuilder
-from utils.path_utils import load_text_file, find_encoded_file
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from llm_music_theory.models.base import LLMInterface, PromptInput
+from llm_music_theory.prompts.prompt_builder import PromptBuilder
+from llm_music_theory.utils.path_utils import (
+    load_text_file,
+    find_encoded_file,
+    find_question_file,
+    list_guides,
+    ensure_dir,
+    get_output_path,
+)
 
 
 class PromptRunner:
     """
-    Loads all prompt components, assembles the full prompt,
-    sends it to the model, and returns the response.
+    Orchestrates loading of prompt components, building the prompt,
+    querying the LLM, and optionally saving the response.
     """
 
     def __init__(
@@ -22,63 +31,122 @@ class PromptRunner:
         exam_date: str,
         base_dirs: Dict[str, Path],
         temperature: float = 0.0,
+        max_tokens: Optional[int] = None,
+        save: bool = False,
     ):
         """
         Args:
             model: An instance of a model implementing LLMInterface.
-            question_number: e.g., "Q1a"
+            question_number: e.g. "Q1a"
             datatype: One of "mei", "musicxml", "abc", "humdrum"
-            context: Whether to use contextual prompt
-            exam_date: e.g., "August2024"
-            base_dirs: Dict of required folders: {"prompts": ..., "questions": ..., "encoded": ..., "guides": ...}
-            temperature: Sampling temperature (default 0.0 for deterministic results)
+            context: Whether to include contextual guides
+            exam_date: Identifier for exam version/folder (e.g., "August2024")
+            base_dirs: Dict containing base folders:
+                {
+                  "prompts": Path,
+                  "questions": Path,
+                  "encoded": Path,
+                  "guides": Path,
+                  "outputs": Path
+                }
+            temperature: Sampling temperature (0.0–1.0).
+            max_tokens: Optional override for token limit.
+            save: Whether to save the response to disk under outputs/
         """
+        self.logger = logging.getLogger(__name__)
         self.model = model
         self.question_number = question_number
-        self.datatype = datatype
+        self.datatype = datatype.lower()
         self.context = context
         self.exam_date = exam_date
         self.base_dirs = base_dirs
         self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.save = save
+
+        if self.save:
+            # Precompute output path
+            self.save_to = get_output_path(
+                outputs_dir=base_dirs["outputs"],
+                model_name=type(model).__name__,
+                question_number=self.question_number,
+                datatype=self.datatype,
+                context=self.context,
+            )
+        else:
+            self.save_to = None
 
     def run(self) -> str:
         """
-        Assembles and sends the prompt, returns the LLM's response.
+        Assemble the prompt, query the model, and optionally save the response.
+        Returns the raw text response.
         """
-        prompt_input = self._load_all()
-        return self.model.query(prompt_input)
+        prompt_input = self._build_prompt_input()
+        self.logger.info(
+            f"Running {self.question_number} [{self.datatype}] "
+            f"context={self.context} temp={self.temperature}"
+        )
+        response = self.model.query(prompt_input)
+        self.logger.info(f"Received response for {self.question_number}")
 
-    def _load_all(self) -> PromptInput:
-        # Define file paths
+        if self.save and self.save_to:
+            self._save_response(response)
+
+        return response
+
+    def _build_prompt_input(self) -> PromptInput:
+        """
+        Load all prompt pieces and assemble into PromptInput.
+        """
+        # Load file paths
         system_path = self.base_dirs["prompts"] / "system_prompt.txt"
         user_prompt_path = self.base_dirs["prompts"] / f"AllPromptsUser_{self.datatype.upper()}.txt"
-        encoded_path = find_encoded_file(self.question_number, self.datatype, self.base_dirs["encoded"])
-        context_mode = "context" if self.context else "nocontext"
-        question_path = self.base_dirs["questions"] / f"{self.question_number}.{context_mode}.txt"
-
-        # Load contents
-        system_prompt = load_text_file(system_path)
-        format_user_prompt = load_text_file(user_prompt_path)
-        encoded_data = load_text_file(encoded_path)
-        question = load_text_file(question_path)
-        guide_texts = self._find_guides()
-
-        # Build full prompt
-        builder = PromptBuilder(
-            system_prompt=system_prompt,
-            format_specific_user_prompt=format_user_prompt,
-            encoded_data=encoded_data,
-            guides=guide_texts,
-            question_prompt=question,
-            temperature=self.temperature,
-            model_name=None  # You can customize this
+        encoded_path = find_encoded_file(
+            question_number=self.question_number,
+            datatype=self.datatype,
+            encoded_dir=self.base_dirs["encoded"],
+        )
+        question_path = find_question_file(
+            question_number=self.question_number,
+            context=self.context,
+            questions_dir=self.base_dirs["questions"],
         )
 
-        return builder.build()
+        # Load text
+        system_prompt = load_text_file(system_path)
+        format_prompt = load_text_file(user_prompt_path)
+        encoded_data = load_text_file(encoded_path)
+        question_text = load_text_file(question_path)
+        guide_texts = []
+        if self.context:
+            # Load all guides; replace with selective mapping later if needed
+            guide_files = list_guides(self.base_dirs["guides"])
+            guide_texts = [
+                load_text_file(self.base_dirs["guides"] / g"{guide}.txt") for guide in guide_files
+            ]
 
-    def _find_guides(self) -> List[str]:
+        # Build PromptInput
+        builder = PromptBuilder(
+            system_prompt=system_prompt,
+            format_specific_user_prompt=format_prompt,
+            encoded_data=encoded_data,
+            guides=guide_texts,
+            question_prompt=question_text,
+            temperature=self.temperature,
+            model_name=None,
+        )
+        prompt_input = builder.build()
+
+        # Apply max_tokens override if provided
+        if self.max_tokens is not None:
+            prompt_input.max_tokens = self.max_tokens
+
+        return prompt_input
+
+    def _save_response(self, response: str) -> None:
         """
-        Stub: later this can be dynamic per-question.
+        Write the model's response to disk.
         """
-        guide_path = self.base_dirs["guides"] / "intervals.txt"
-        return [load_text_file(guide_path)]
+        self.save_to.parent.mkdir(parents=True, exist_ok=True)
+        self.save_to.write_text(response, encoding="utf-8")
+        self.logger.info(f"Saved response to {self.save_to}")
