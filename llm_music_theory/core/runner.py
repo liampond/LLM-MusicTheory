@@ -122,7 +122,7 @@ class PromptRunner:
             # Load all guides; replace with selective mapping later if needed
             guide_files = list_guides(self.base_dirs["guides"])
             guide_texts = [
-                load_text_file(self.base_dirs["guides"] / g"{guide}.txt") for guide in guide_files
+                load_text_file(self.base_dirs["guides"] / f"{guide}.txt") for guide in guide_files
             ]
 
         # Build PromptInput
