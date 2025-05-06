@@ -8,12 +8,13 @@ from typing import Optional
 @dataclass
 class PromptInput:
     """
-    Unified structure for sending prompts to any LLM.
+    Encapsulates all parameters for a single LLM request.
     """
-    system_prompt: str
-    user_prompt: str
-    temperature: float = 0.0
-    model_name: Optional[str] = None
+    system_prompt: str            # The system‐level instructions
+    user_prompt: str              # The body: format intro + encoded data + guides + question
+    temperature: float = 0.0      # Sampling temperature
+    model_name: Optional[str] = None   # Override the default model if provided
+    max_tokens: Optional[int] = None   # (Optional) token limit for the response
 
 
 class LLMInterface(ABC):
