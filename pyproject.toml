@@ -1,27 +1,40 @@
 [tool.poetry]
-name = "llm-music-theory"
-version = "0.1.0"
-description = "Framework for querying LLMs with music theory prompts using in-context learning and chain-of-thought."
-authors = ["Liam Pond <liam.pond@mail.mcgill.ca>"]
-readme = "README.md"
+name         = "llm-music-theory"
+version      = "0.1.0"
+description  = "Framework for querying LLMs with music theory prompts using in-context learning and chain-of-thought."
+authors      = ["Liam Pond <liam.pond@mail.mcgill.ca>"]
+readme       = "README.md"
+
+# Your Python package code lives under src/llm_music_theory
 packages = [
   { include = "llm_music_theory", from = "src" }
 ]
 
+# Include your sample data in the published package
+include = [
+  "src/llm_music_theory/encoded/**",   # only the core samples
+  "src/llm_music_theory/prompts/**"
+]
+
 [tool.poetry.dependencies]
-python = "^3.13"
-requests = "^2.31.0"
-pyyaml = "^6.0.1"
-tqdm = "^4.66.1"
-python-dotenv = "^1.0.1"
-google-generativeai = "^0.8.5"
-openai = "^1.77.0"
-anthropic = "^0.50.0"
-deepseek = "^1.0.0"
+python                = "^3.13"
+requests              = "^2.31.0"
+pyyaml                = "^6.0.1"
+tqdm                  = "^4.66.1"
+python-dotenv         = "^1.0.1"
+google-generativeai   = "^0.8.5"
+openai                = "^1.77.0"
+anthropic             = "^0.50.0"
+deepseek              = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.1.1"
+pytest                = "^8.1.1"
+
+[tool.poetry.scripts]
+# Now you can run with `poetry run run-single` or `poetry run run-batch`
+run-single  = "llm_music_theory.cli.run_single:main"
+run-batch   = "llm_music_theory.cli.run_batch:main"
 
 [build-system]
-requires = ["poetry-core"]
+requires    = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

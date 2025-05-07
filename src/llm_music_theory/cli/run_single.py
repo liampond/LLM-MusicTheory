@@ -15,9 +15,36 @@ from llm_music_theory.utils.path_utils import (
     list_guides
 )
 
+
+def find_project_root(marker_files=("pyproject.toml", ".git")) -> Path:
+    """
+    Walk upwards from the current working directory to find the project root,
+    defined as the first directory containing one of the marker files.
+    """
+    cwd = Path.cwd()
+    for parent in (cwd, *cwd.parents):
+        if any((parent / m).exists() for m in marker_files):
+            return parent
+    raise RuntimeError("Could not locate project root")
+
+
+def load_project_env():
+    """
+    Load environment variables from the .env at the project root.
+    """
+    root = find_project_root()
+    dotenv_path = root / ".env"
+    if dotenv_path.exists():
+        load_dotenv(dotenv_path=dotenv_path)
+    else:
+        logging.warning(f"No .env found at {dotenv_path}; relying on existing environment")
+
+
 def main():
-    # Load environment variables and configure logging
-    load_dotenv()
+    # Load env first
+    load_project_env()
+
+    # Configure logging
     logging.basicConfig(
         format="%(asctime)s [%(levelname)s] %(message)s",
         level=logging.INFO
@@ -82,19 +109,32 @@ def main():
         help="Save response under outputs/<Model>/"
     )
 
+    # --- Data & output directories ---
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=Path.cwd() / "data",
+        help="Root folder for encoded/ and prompts/ (default: ./data)"
+    )
+    parser.add_argument(
+        "--outputs-dir",
+        type=Path,
+        default=Path.cwd() / "outputs",
+        help="Where to save model responses (default: ./outputs)"
+    )
+
     args = parser.parse_args()
 
-    # Base directory resolution
-    project_root = Path(__file__).resolve().parent.parent
+    # Build base_dirs mapping
     base_dirs = {
-        "prompts":  project_root / "prompts",
-        "questions": project_root / "prompts" / "questions",
-        "encoded":  project_root / "encoded",
-        "guides":   project_root / "prompts" / "guides",
-        "outputs":  project_root / "outputs",
+        "encoded":   args.data_dir / "encoded",
+        "prompts":   args.data_dir / "prompts",
+        "questions": args.data_dir / "prompts" / "questions",
+        "guides":    args.data_dir / "prompts" / "guides",
+        "outputs":   args.outputs_dir,
     }
 
-    # Handle listings
+    # Handle early listings
     if args.list_questions:
         print("\n".join(list_questions(base_dirs["questions"])))
         sys.exit(0)
@@ -105,10 +145,10 @@ def main():
         print("\n".join(list_guides(base_dirs["guides"])))
         sys.exit(0)
 
-    # Load the model dynamically
+    # Dynamically load the requested model
     model = get_llm(args.model)
 
-    # Configure and run
+    # Configure and run the prompt
     runner = PromptRunner(
         model=model,
         question_number=args.question,
@@ -132,13 +172,14 @@ def main():
         logging.error(f"Failed to run prompt: {e}")
         sys.exit(1)
 
-    # Output
+    # Print and optionally save the response
     print("\n=== Model Response ===\n")
     print(response)
 
     if args.save and runner.save_to:
         logging.info(f"Response saved to {runner.save_to}")
         print(f"\nSaved response to: {runner.save_to}")
+
 
 if __name__ == "__main__":
     main()
