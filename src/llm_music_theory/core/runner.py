@@ -36,22 +36,21 @@ class PromptRunner:
     ):
         """
         Args:
-            model: An instance of a model implementing LLMInterface.
+            model: An instance implementing LLMInterface.
             question_number: e.g. "Q1a"
-            datatype: One of "mei", "musicxml", "abc", "humdrum"
-            context: Whether to include contextual guides
-            exam_date: Identifier for exam version/folder (e.g., "August2024")
-            base_dirs: Dict containing base folders:
-                {
-                  "prompts": Path,
-                  "questions": Path,
-                  "encoded": Path,
-                  "guides": Path,
-                  "outputs": Path
-                }
-            temperature: Sampling temperature (0.0–1.0).
-            max_tokens: Optional override for token limit.
-            save: Whether to save the response to disk under outputs/
+            datatype: "mei"|"musicxml"|"abc"|"humdrum"
+            context: include guides if True
+            exam_date: (unused for now) e.g. "August2024"
+            base_dirs: {
+                "prompts": Path,
+                "questions": Path,
+                "encoded": Path,
+                "guides": Path,
+                "outputs": Path
+            }
+            temperature: sampling temp (0.0–1.0)
+            max_tokens: optional response token cap
+            save: whether to persist the response to disk
         """
         self.logger = logging.getLogger(__name__)
         self.model = model
@@ -65,7 +64,6 @@ class PromptRunner:
         self.save = save
 
         if self.save:
-            # Precompute output path
             self.save_to = get_output_path(
                 outputs_dir=base_dirs["outputs"],
                 model_name=type(model).__name__,
@@ -78,8 +76,7 @@ class PromptRunner:
 
     def run(self) -> str:
         """
-        Assemble the prompt, query the model, and optionally save the response.
-        Returns the raw text response.
+        Build, send prompt, and return response (saving if requested).
         """
         prompt_input = self._build_prompt_input()
         self.logger.info(
@@ -96,11 +93,14 @@ class PromptRunner:
 
     def _build_prompt_input(self) -> PromptInput:
         """
-        Load all prompt pieces and assemble into PromptInput.
+        Load all components, assemble PromptInput, apply max_tokens override.
         """
-        # Load file paths
+        # 1. Resolve paths
         system_path = self.base_dirs["prompts"] / "system_prompt.txt"
-        user_prompt_path = self.base_dirs["prompts"] / f"AllPromptsUser_{self.datatype.upper()}.txt"
+        user_prompt_path = (
+            self.base_dirs["prompts"]
+            / f"AllPromptsUser_{self.datatype.upper()}.txt"
+        )
         encoded_path = find_encoded_file(
             question_number=self.question_number,
             datatype=self.datatype,
@@ -112,32 +112,32 @@ class PromptRunner:
             questions_dir=self.base_dirs["questions"],
         )
 
-        # Load text
+        # 2. Load text content
         system_prompt = load_text_file(system_path)
         format_prompt = load_text_file(user_prompt_path)
         encoded_data = load_text_file(encoded_path)
         question_text = load_text_file(question_path)
-        guide_texts = []
-        if self.context:
-            # Load all guides; replace with selective mapping later if needed
-            guide_files = list_guides(self.base_dirs["guides"])
-            guide_texts = [
-                load_text_file(self.base_dirs["guides"] / f"{guide}.txt") for guide in guide_files
-            ]
 
-        # Build PromptInput
+        # 3. Load guides if requested
+        guides: List[str] = []
+        if self.context:
+            for guide_name in list_guides(self.base_dirs["guides"]):
+                guide_path = self.base_dirs["guides"] / f"{guide_name}.txt"
+                guides.append(load_text_file(guide_path))
+
+        # 4. Build the PromptInput
         builder = PromptBuilder(
             system_prompt=system_prompt,
             format_specific_user_prompt=format_prompt,
             encoded_data=encoded_data,
-            guides=guide_texts,
+            guides=guides,
             question_prompt=question_text,
             temperature=self.temperature,
             model_name=None,
         )
         prompt_input = builder.build()
 
-        # Apply max_tokens override if provided
+        # 5. Apply max_tokens override
         if self.max_tokens is not None:
             prompt_input.max_tokens = self.max_tokens
 
@@ -145,7 +145,7 @@ class PromptRunner:
 
     def _save_response(self, response: str) -> None:
         """
-        Write the model's response to disk.
+        Persist the model's response to disk.
         """
         self.save_to.parent.mkdir(parents=True, exist_ok=True)
         self.save_to.write_text(response, encoding="utf-8")

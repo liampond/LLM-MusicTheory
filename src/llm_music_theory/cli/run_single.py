@@ -3,87 +3,112 @@
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 from llm_music_theory.core.dispatcher import get_llm
 from llm_music_theory.core.runner import PromptRunner
+from llm_music_theory.utils.path_utils import (
+    list_questions,
+    list_datatypes,
+    list_guides
+)
 
 def main():
-    # Load environment variables from .env
+    # Load environment variables and configure logging
     load_dotenv()
-
-    # Set up basic logging
     logging.basicConfig(
         format="%(asctime)s [%(levelname)s] %(message)s",
         level=logging.INFO
     )
 
-    # CLI arguments
     parser = argparse.ArgumentParser(
         description="Run a single music-theory prompt against an LLM"
     )
-    parser.add_argument(
-        "--model",
-        required=True,
-        choices=["chatgpt", "claude", "gemini", "deepseek"],
-        help="Which LLM to use"
+
+    # --- Listing flags ---
+    list_group = parser.add_argument_group("Listing", "List available resources and exit")
+    list_group.add_argument(
+        "--list-questions",
+        action="store_true",
+        help="List all question IDs (e.g. Q1a, Q1b) and exit"
     )
-    parser.add_argument(
-        "--question",
-        required=True,
+    list_group.add_argument(
+        "--list-datatypes",
+        action="store_true",
+        help="List supported encoding formats and exit"
+    )
+    list_group.add_argument(
+        "--list-guides",
+        action="store_true",
+        help="List available guides and exit"
+    )
+
+    # --- Run flags ---
+    run_group = parser.add_argument_group("Run", "Execute a single prompt")
+    run_group.add_argument(
+        "--model", required=True,
+        choices=["chatgpt", "claude", "gemini", "deepseek"],
+        help="LLM to use"
+    )
+    run_group.add_argument(
+        "--question", required=True,
         help="Question ID (e.g., Q1a)"
     )
-    parser.add_argument(
-        "--datatype",
-        required=True,
+    run_group.add_argument(
+        "--datatype", required=True,
         choices=["mei", "musicxml", "abc", "humdrum"],
         help="Encoding format"
     )
-    parser.add_argument(
-        "--context",
-        action="store_true",
+    run_group.add_argument(
+        "--context", action="store_true",
         help="Include contextual guides"
     )
-    parser.add_argument(
-        "--examdate",
-        default="August2024",
-        help="Exam version or folder name (for future use)"
+    run_group.add_argument(
+        "--examdate", default="August2024",
+        help="Exam version/folder name (unused for now)"
     )
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=0.0,
+    run_group.add_argument(
+        "--temperature", type=float, default=0.0,
         help="Sampling temperature (0.0–1.0)"
     )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=None,
+    run_group.add_argument(
+        "--max-tokens", type=int, default=None,
         help="Optional max tokens for the response"
     )
-    parser.add_argument(
-        "--save",
-        action="store_true",
-        help="Save the model response to outputs/<Model>/<file>"
+    run_group.add_argument(
+        "--save", action="store_true",
+        help="Save response under outputs/<Model>/"
     )
 
     args = parser.parse_args()
 
-    # Resolve base directories relative to project root
+    # Base directory resolution
     project_root = Path(__file__).resolve().parent.parent
     base_dirs = {
-        "prompts": project_root / "prompts",
+        "prompts":  project_root / "prompts",
         "questions": project_root / "prompts" / "questions",
-        "encoded": project_root / "encoded",
-        "guides": project_root / "prompts" / "guides",
-        "outputs": project_root / "outputs",
+        "encoded":  project_root / "encoded",
+        "guides":   project_root / "prompts" / "guides",
+        "outputs":  project_root / "outputs",
     }
 
-    # Dynamically load the requested model
+    # Handle listings
+    if args.list_questions:
+        print("\n".join(list_questions(base_dirs["questions"])))
+        sys.exit(0)
+    if args.list_datatypes:
+        print("\n".join(list_datatypes(base_dirs["encoded"])))
+        sys.exit(0)
+    if args.list_guides:
+        print("\n".join(list_guides(base_dirs["guides"])))
+        sys.exit(0)
+
+    # Load the model dynamically
     model = get_llm(args.model)
 
-    # Initialize and run the prompt
+    # Configure and run
     runner = PromptRunner(
         model=model,
         question_number=args.question,
@@ -100,11 +125,20 @@ def main():
         f"Invoking {args.model} on {args.question} "
         f"[{args.datatype}, context={args.context}]"
     )
-    response = runner.run()
 
-    # Print the response
+    try:
+        response = runner.run()
+    except Exception as e:
+        logging.error(f"Failed to run prompt: {e}")
+        sys.exit(1)
+
+    # Output
     print("\n=== Model Response ===\n")
     print(response)
+
+    if args.save and runner.save_to:
+        logging.info(f"Response saved to {runner.save_to}")
+        print(f"\nSaved response to: {runner.save_to}")
 
 if __name__ == "__main__":
     main()

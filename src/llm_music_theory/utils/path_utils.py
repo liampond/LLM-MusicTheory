@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 
 def load_text_file(path: Path) -> str:
@@ -25,6 +25,7 @@ def find_encoded_file(
     - encoded_dir: base folder where encoded files live
 
     Returns the Path if found, or None if required=False and file is missing.
+    Raises ValueError for unsupported datatype.
     Raises FileNotFoundError if required=True and file is missing.
     """
     ext_map = {"mei": ".mei", "musicxml": ".musicxml", "abc": ".abc", "humdrum": ".krn"}
@@ -49,6 +50,9 @@ def find_question_file(
     Locate the question prompt file (contextual or not) for a given question.
     - context=True  → looks for Q1a.context.txt
     - context=False → looks for Q1a.nocontext.txt
+
+    Returns the Path if found, or None if required=False and file is missing.
+    Raises FileNotFoundError if required=True and file is missing.
     """
     suffix = "context" if context else "nocontext"
     candidate = questions_dir / f"{question_number}.{suffix}.txt"
@@ -66,8 +70,7 @@ def list_questions(questions_dir: Path) -> List[str]:
     """
     ids = set()
     for file in questions_dir.glob("Q*.txt"):
-        parts = file.stem.split(".")
-        ids.add(parts[0])
+        ids.add(file.stem.split(".")[0])
     return sorted(ids)
 
 
@@ -79,8 +82,9 @@ def list_datatypes(encoded_dir: Path) -> List[str]:
     ext_map = {".mei": "mei", ".musicxml": "musicxml", ".krn": "humdrum", ".abc": "abc"}
     found = set()
     for file in encoded_dir.iterdir():
-        if file.suffix in ext_map:
-            found.add(ext_map[file.suffix])
+        dt = ext_map.get(file.suffix)
+        if dt:
+            found.add(dt)
     return sorted(found)
 
 
@@ -110,6 +114,7 @@ def get_output_path(
     """
     Build an output file path for storing model responses.
     e.g. outputs/ChatGPT/Q1a_mei_context.txt
+    Automatically creates the model-specific folder.
     """
     context_flag = "context" if context else "nocontext"
     model_folder = outputs_dir / model_name
