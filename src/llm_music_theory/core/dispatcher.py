@@ -1,10 +1,10 @@
-# core/dispatcher.py
+# src/llm_music_theory/core/dispatcher.py
 
-from models.chatgpt import ChatGPTModel
-from models.gemini import GeminiModel
-from models.claude import ClaudeModel
-from models.deepseek import DeepSeekModel
-from models.base import LLMInterface
+from llm_music_theory.models.chatgpt  import ChatGPTModel
+from llm_music_theory.models.claude   import ClaudeModel
+from llm_music_theory.models.gemini   import GeminiModel
+from llm_music_theory.models.deepseek import DeepSeekModel
+from llm_music_theory.models.base     import LLMInterface
 
 def get_llm(model_name: str) -> LLMInterface:
     """

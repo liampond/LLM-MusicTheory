@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Framework for querying LLMs with music theory prompts using in-context learning and chain-of-thought."
 authors = ["Liam Pond <liam.pond@mail.mcgill.ca>"]
 readme = "README.md"
-packages = [{ include = "llm_music_theory" }]
+packages = [
+  { include = "llm_music_theory", from = "src" }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"

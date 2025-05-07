@@ -1,5 +1,5 @@
 from typing import List
-from models.base import PromptInput
+from llm_music_theory.models.base import PromptInput
 
 
 class PromptBuilder:
