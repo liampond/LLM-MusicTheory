@@ -1,52 +1,67 @@
+# models/gemini.py
+
 import os
-import google.generativeai as genai
 from typing import Optional
+
+from google import genai
+from google.genai.types import GenerateContentConfig
+
 from llm_music_theory.models.base import LLMInterface, PromptInput
+from llm_music_theory.config.settings import DEFAULT_MODELS
 
 
 class GeminiModel(LLMInterface):
     """
-    GeminiModel provides a structured wrapper for Google Generative AI (Gemini).
-    It reads GOOGLE_API_KEY from the environment, supports per-call model overrides,
-    temperature tuning, and optional token limits.
+    Wrapper for Google's Gemini models via the Google Gen AI SDK (google-genai).
+    Reads GOOGLE_API_KEY from the environment, supports per-call model overrides,
+    temperature control, and optional max_tokens.
     """
 
-    def __init__(self, model_name: Optional[str] = "gemini-pro"):
+    def __init__(self, model_name: Optional[str] = None):
+        # Load API key
         self.api_key = os.getenv("GOOGLE_API_KEY")
         if not self.api_key:
             raise EnvironmentError("GOOGLE_API_KEY is not set in the environment.")
+
+        # Configure the GenAI SDK
         genai.configure(api_key=self.api_key)
-        self.model_name = model_name
-        self.model = genai.GenerativeModel(model_name=self.model_name)
+        self.client = genai.Client()
+
+        # Choose default model from settings if not overridden
+        self.model_name = model_name or DEFAULT_MODELS["google"]
 
     def query(self, input: PromptInput) -> str:
         """
-        Sends a system + user prompt to the Gemini chat endpoint.
+        Sends a single-turn prompt (system + user) to Gemini via generate_content.
 
         Parameters:
-            input (PromptInput):
-                - system_prompt (str): Instructions for the assistant.
+            input (PromptInput): 
+                - system_prompt (str): High-level instructions for Gemini.
                 - user_prompt   (str): The combined prompt (format intro, encoded data, guides, question).
                 - temperature   (float): Sampling temperature.
-                - max_tokens    (Optional[int]): Maximum response tokens.
-                - model_name    (Optional[str]): Override default model.
+                - max_tokens    (Optional[int]): Maximum tokens for the response.
+                - model_name    (Optional[str]): Override for the model to use.
 
         Returns:
-            str: The assistant's response text.
+            str: The generated text from Gemini.
         """
-        model = input.model_name or self.model_name
-        max_output_tokens = getattr(input, "max_tokens", None) or 2048
+        # Determine which model to call
+        model_id = input.model_name or self.model_name
 
-        # Start a chat with empty history
-        chat = self.model.start_chat(history=[])
-        prompt_text = f"{input.system_prompt}\n\n{input.user_prompt}"
-        response = chat.send_message(
-            prompt_text,
-            generation_config={
-                "temperature": input.temperature,
-                "max_output_tokens": max_output_tokens
-            }
+        # Build the prompt by concatenating system + user
+        prompt = f"{input.system_prompt}\n\n{input.user_prompt}"
+
+        # Configure generation settings
+        gen_config = GenerateContentConfig(temperature=input.temperature)
+        if getattr(input, "max_tokens", None):
+            gen_config.max_output_tokens = input.max_tokens
+
+        # Call the single-turn generate_content endpoint
+        response = self.client.models.generate_content(
+            model=model_id,
+            contents=prompt,
+            config=gen_config,
         )
 
-        # TODO: Hook in optional logging here for request/response tracing
+        # Return the trimmed result
         return response.text.strip()
