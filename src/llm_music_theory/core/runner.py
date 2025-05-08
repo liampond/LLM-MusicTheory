@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
+from importlib import resources
 
 from llm_music_theory.models.base import LLMInterface, PromptInput
 from llm_music_theory.prompts.prompt_builder import PromptBuilder
@@ -11,7 +12,6 @@ from llm_music_theory.utils.path_utils import (
     find_encoded_file,
     find_question_file,
     list_guides,
-    ensure_dir,
     get_output_path,
 )
 
@@ -21,6 +21,14 @@ class PromptRunner:
     Orchestrates loading of prompt components, building the prompt,
     querying the LLM, and optionally saving the response.
     """
+
+    # extension mapping for fallback
+    _EXT_MAP = {
+        "mei":      ".mei",
+        "musicxml": ".musicxml",
+        "abc":      ".abc",
+        "humdrum":  ".krn",
+    }
 
     def __init__(
         self,
@@ -34,24 +42,6 @@ class PromptRunner:
         max_tokens: Optional[int] = None,
         save: bool = False,
     ):
-        """
-        Args:
-            model: An instance implementing LLMInterface.
-            question_number: e.g. "Q1a"
-            datatype: "mei"|"musicxml"|"abc"|"humdrum"
-            context: include guides if True
-            exam_date: (unused for now) e.g. "August2024"
-            base_dirs: {
-                "prompts": Path,
-                "questions": Path,
-                "encoded": Path,
-                "guides": Path,
-                "outputs": Path
-            }
-            temperature: sampling temp (0.0–1.0)
-            max_tokens: optional response token cap
-            save: whether to persist the response to disk
-        """
         self.logger = logging.getLogger(__name__)
         self.model = model
         self.question_number = question_number
@@ -63,21 +53,18 @@ class PromptRunner:
         self.max_tokens = max_tokens
         self.save = save
 
-        if self.save:
+        if save:
             self.save_to = get_output_path(
                 outputs_dir=base_dirs["outputs"],
                 model_name=type(model).__name__,
-                question_number=self.question_number,
+                question_number=question_number,
                 datatype=self.datatype,
-                context=self.context,
+                context=context,
             )
         else:
             self.save_to = None
 
     def run(self) -> str:
-        """
-        Build, send prompt, and return response (saving if requested).
-        """
         prompt_input = self._build_prompt_input()
         self.logger.info(
             f"Running {self.question_number} [{self.datatype}] "
@@ -92,40 +79,20 @@ class PromptRunner:
         return response
 
     def _build_prompt_input(self) -> PromptInput:
-        """
-        Load all components, assemble PromptInput, apply max_tokens override.
-        """
-        # 1. Resolve paths
-        system_path = self.base_dirs["prompts"] / "system_prompt.txt"
-        user_prompt_path = (
-            self.base_dirs["prompts"]
-            / f"AllPromptsUser_{self.datatype.upper()}.txt"
-        )
-        encoded_path = find_encoded_file(
-            question_number=self.question_number,
-            datatype=self.datatype,
-            encoded_dir=self.base_dirs["encoded"],
-        )
-        question_path = find_question_file(
-            question_number=self.question_number,
-            context=self.context,
-            questions_dir=self.base_dirs["questions"],
-        )
+        # 1. Load system & base-format prompt
+        system_prompt = self._load_system_prompt()
+        format_prompt = self._load_base_format_prompt()
 
-        # 2. Load text content
-        system_prompt = load_text_file(system_path)
-        format_prompt = load_text_file(user_prompt_path)
-        encoded_data = load_text_file(encoded_path)
-        question_text = load_text_file(question_path)
+        # 2. Encoded music (external → package)
+        encoded_data = self._load_encoded()
 
-        # 3. Load guides if requested
-        guides: List[str] = []
-        if self.context:
-            for guide_name in list_guides(self.base_dirs["guides"]):
-                guide_path = self.base_dirs["guides"] / f"{guide_name}.txt"
-                guides.append(load_text_file(guide_path))
+        # 3. Question text (external → package)
+        question_text = self._load_question()
 
-        # 4. Build the PromptInput
+        # 4. Guides (external → package)
+        guides = self._load_guides()
+
+        # 5. Assemble
         builder = PromptBuilder(
             system_prompt=system_prompt,
             format_specific_user_prompt=format_prompt,
@@ -137,16 +104,100 @@ class PromptRunner:
         )
         prompt_input = builder.build()
 
-        # 5. Apply max_tokens override
+        # 6. max_tokens override
         if self.max_tokens is not None:
             prompt_input.max_tokens = self.max_tokens
 
         return prompt_input
 
+    def _load_system_prompt(self) -> str:
+        """
+        External first, fallback to package at prompts/base/system_prompt.txt
+        """
+        ext = self.base_dirs["prompts"] / "base" / "system_prompt.txt"
+        if ext.exists():
+            return load_text_file(ext)
+
+        return resources.read_text("llm_music_theory.prompts.base", "system_prompt.txt")
+
+    def _load_base_format_prompt(self) -> str:
+        """
+        External first, fallback to package at prompts/base/base_{DATATYPE}.txt
+        """
+        filename = f"base_{self.datatype}.txt"
+        ext = self.base_dirs["prompts"] / "base" / filename
+        if ext.exists():
+            return load_text_file(ext)
+
+        return resources.read_text("llm_music_theory.prompts.base", filename)
+
+    def _load_encoded(self) -> str:
+        """
+        External first, fallback to package under encoded/{FORMAT}/Q….ext
+        """
+        # try external
+        ext_path = find_encoded_file(
+            question_number=self.question_number,
+            datatype=self.datatype,
+            encoded_dir=self.base_dirs["encoded"] / self.datatype.capitalize(),
+            required=False
+        )
+        if ext_path:
+            return load_text_file(ext_path)
+
+        # fallback
+        pkg_dir = resources.files(f"llm_music_theory.encoded.{self.datatype.capitalize()}")
+        filename = f"{self.question_number}{self._EXT_MAP[self.datatype]}"
+        path = pkg_dir / filename
+        return path.read_text(encoding="utf-8")
+
+    def _load_question(self) -> str:
+        """
+        External first, fallback to package under prompts/questions/{context|no_context}/{FORMAT}/…
+        """
+        suffix = "context" if self.context else "no_context"
+        ext_q = find_question_file(
+            question_number=self.question_number,
+            context=self.context,
+            questions_dir=self.base_dirs["questions"] / suffix / self.datatype.capitalize(),
+            required=False
+        )
+        if ext_q:
+            return load_text_file(ext_q)
+
+        # fallback
+        pkg_root = resources.files("llm_music_theory.prompts.questions")
+        pkg_dir = pkg_root / suffix / self.datatype.capitalize()
+        # match any file starting with question_number
+        for candidate in pkg_dir.iterdir():
+            if candidate.stem.startswith(self.question_number):
+                return candidate.read_text(encoding="utf-8")
+
+        raise FileNotFoundError(
+            f"Could not find prompt for {self.question_number} "
+            f"in package under {pkg_dir}"
+        )
+
+    def _load_guides(self) -> List[str]:
+        """
+        External first, fallback to package under prompts/guides/
+        """
+        guides_list: List[str] = []
+        ext_dir = self.base_dirs["guides"]
+        if self.context and ext_dir.exists():
+            for guide_name in list_guides(ext_dir):
+                guides_list.append(load_text_file(ext_dir / f"{guide_name}.txt"))
+            if guides_list:
+                return guides_list
+
+        # fallback to bundled guides
+        pkg = resources.files("llm_music_theory.prompts.guides")
+        for p in pkg.iterdir():
+            if p.suffix == ".txt":
+                guides_list.append(p.read_text(encoding="utf-8"))
+        return guides_list
+
     def _save_response(self, response: str) -> None:
-        """
-        Persist the model's response to disk.
-        """
         self.save_to.parent.mkdir(parents=True, exist_ok=True)
         self.save_to.write_text(response, encoding="utf-8")
         self.logger.info(f"Saved response to {self.save_to}")
