@@ -4,7 +4,6 @@ import os
 from typing import Optional
 
 from google import genai
-from google.genai.types import GenerateContentConfig
 
 from llm_music_theory.models.base import LLMInterface, PromptInput
 from llm_music_theory.config.settings import DEFAULT_MODELS
@@ -23,10 +22,9 @@ class GeminiModel(LLMInterface):
         if not self.api_key:
             raise EnvironmentError("GOOGLE_API_KEY is not set in the environment.")
 
-        # Configure the GenAI SDK
-        genai.configure(api_key=self.api_key)
-        self.client = genai.Client()
-
+        # Initialize the client using the Client class
+        self.client = genai.Client(api_key=self.api_key)
+        
         # Choose default model from settings if not overridden
         self.model_name = model_name or DEFAULT_MODELS["google"]
 
@@ -47,20 +45,29 @@ class GeminiModel(LLMInterface):
         """
         # Determine which model to call
         model_id = input.model_name or self.model_name
-
+        
+        # Fix model format - remove "models/" prefix if it exists
+        if model_id.startswith("models/"):
+            model_id = model_id[7:]  # Strip "models/" prefix
+        
         # Build the prompt by concatenating system + user
         prompt = f"{input.system_prompt}\n\n{input.user_prompt}"
 
         # Configure generation settings
-        gen_config = GenerateContentConfig(temperature=input.temperature)
+        config = {
+            "temperature": input.temperature
+        }
         if getattr(input, "max_tokens", None):
-            gen_config.max_output_tokens = input.max_tokens
-
-        # Call the single-turn generate_content endpoint
+            config["max_output_tokens"] = input.max_tokens
+        
+        # Log the model name being used
+        print(f"Using model: {model_id}")
+            
+        # Generate content using the client API
         response = self.client.models.generate_content(
             model=model_id,
             contents=prompt,
-            config=gen_config,
+            config=config
         )
 
         # Return the trimmed result
