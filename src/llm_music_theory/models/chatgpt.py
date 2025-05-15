@@ -1,6 +1,6 @@
 import os
-import openai
 from typing import Optional
+from openai import OpenAI
 from llm_music_theory.models.base import LLMInterface, PromptInput
 
 
@@ -16,7 +16,7 @@ class ChatGPTModel(LLMInterface):
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise EnvironmentError("OPENAI_API_KEY is not set in the environment.")
-        openai.api_key = self.api_key
+        self.client = OpenAI(api_key=self.api_key)
         self.model_name = model_name
 
     def query(self, input: PromptInput) -> str:
@@ -42,7 +42,7 @@ class ChatGPTModel(LLMInterface):
             {"role": "user", "content": input.user_prompt},
         ]
 
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=input.temperature,

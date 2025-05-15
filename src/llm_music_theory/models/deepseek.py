@@ -1,6 +1,6 @@
 import os
-import openai
 from typing import Optional
+from openai import OpenAI
 from llm_music_theory.models.base import LLMInterface, PromptInput
 
 
@@ -15,8 +15,13 @@ class DeepSeekModel(LLMInterface):
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
         if not self.api_key:
             raise EnvironmentError("DEEPSEEK_API_KEY is not set in the environment.")
-        openai.api_key = self.api_key
-        openai.api_base = "https://api.deepseek.com/v1"
+
+        # DeepSeek requires a custom base URL for OpenAI-compatible access
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url="https://api.deepseek.com/v1"
+        )
+
         self.model_name = model_name
 
     def query(self, input: PromptInput) -> str:
@@ -42,11 +47,11 @@ class DeepSeekModel(LLMInterface):
             {"role": "user",   "content": input.user_prompt},
         ]
 
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=input.temperature,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens
         )
 
         # TODO: Hook in optional logging here for request/response tracing

@@ -1,7 +1,8 @@
 import os
-import anthropic
 from typing import Optional
+from anthropic import Anthropic
 from llm_music_theory.models.base import LLMInterface, PromptInput
+from llm_music_theory.config.settings import DEFAULT_MODELS
 
 
 class ClaudeModel(LLMInterface):
@@ -10,12 +11,12 @@ class ClaudeModel(LLMInterface):
     It uses environment-based API keys and supports optional model overrides.
     """
 
-    def __init__(self, model_name: Optional[str] = "claude-3-sonnet-20240229"):
+    def __init__(self, model_name: Optional[str] = None):
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise EnvironmentError("ANTHROPIC_API_KEY is not set in the environment.")
-        self.model_name = model_name
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.model_name = model_name or DEFAULT_MODELS["anthropic"]
+        self.client = Anthropic(api_key=self.api_key)
 
     def query(self, input: PromptInput) -> str:
         """
