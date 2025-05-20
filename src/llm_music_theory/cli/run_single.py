@@ -75,16 +75,16 @@ def main():
     # --- Run flags ---
     run_group = parser.add_argument_group("Run", "Execute a single prompt")
     run_group.add_argument(
-        "--model", required=True,
+        "--model",
         choices=["chatgpt", "claude", "gemini", "deepseek"],
         help="LLM to use"
     )
     run_group.add_argument(
-        "--question", required=True,
+        "--question",
         help="Question ID (e.g., Q1a)"
     )
     run_group.add_argument(
-        "--datatype", required=True,
+        "--datatype",
         choices=["mei", "musicxml", "abc", "humdrum"],
         help="Encoding format"
     )
@@ -144,6 +144,18 @@ def main():
     if args.list_guides:
         print("\n".join(list_guides(base_dirs["guides"])))
         sys.exit(0)
+    
+    # Require these only if not listing
+    if not (args.list_questions or args.list_datatypes or args.list_guides):
+        missing = []
+        if not args.model:
+            missing.append("--model")
+        if not args.question:
+            missing.append("--question")
+        if not args.datatype:
+            missing.append("--datatype")
+        if missing:
+            parser.error(f"The following arguments are required: {', '.join(missing)}")
 
     # Dynamically load the requested model
     model = get_llm(args.model)
