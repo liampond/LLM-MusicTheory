@@ -162,8 +162,8 @@ def main():
     )
 
     logging.info(
-        f"Invoking {args.model} on {args.question} "
-        f"[{args.datatype}, context={args.context}]"
+        f"Running {args.model} on {args.question} "
+        f"Datatype: {args.datatype}, Context: {args.context}]"
     )
 
     try:
