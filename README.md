@@ -83,7 +83,7 @@ poetry run python src/llm_music_theory/cli/run_single.py --model gemini --questi
 - `--datatype` (required): The encoding format. Options: `mei`, `musicxml`, `abc`, `humdrum`
 - `--context`: Include contextual guides (add this flag for context, omit for no context)
 - `--examdate`: Specify the exam version/folder (default: `August2024`)
-- `--temperature`: Sampling temperature for the model (default: `0.0`)
+- `--temperature`: Sampling [temperature](https://learnprompting.org/docs/intermediate/configuration_hyperparameters?srsltid=AfmBOoo66sF4m6TbQQHn8HGvoJvoLwaoUITh6xeb2jbSHLC3LzBOcI0Z) (creativity) for the model (default: `0.0`)
 - `--max-tokens`: Maximum tokens for the response (optional)
 - `--save`: Save the model response to the outputs directory
 - `--data-dir`: Path to your data directory (default: `./data`)
