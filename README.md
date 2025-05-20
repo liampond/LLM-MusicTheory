@@ -1,6 +1,6 @@
 # LLM-MusicTheory
 
-A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying APIs like ChatGPT, Claude, Gemini, and DeepSeek. Built for experimentation and evaluation on official Royal Conservatory of Music (RCM) exam questions.
+A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying ChatGPT, Claude, Gemini, and DeepSeek. Built for experimentation and evaluation on official Royal Conservatory of Music (RCM) exam questions.
 
 ## Setup
 1. **Clone the repository**
