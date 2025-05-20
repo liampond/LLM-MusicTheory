@@ -21,10 +21,5 @@ DEEPSEEK_API_KEY=your_key
 
 ## Run a Single Prompt
 ```bash
-poetry run python llm_music_theory/cli/run_single.py --model chatgpt --question Q4b --format mei --context True
-```
-
-## Run Batch
-```bash
-poetry run python llm_music_theory/cli/run_batch.py --model claude
+poetry run python src/llm_music_theory/cli/run_single.py --model gemini --question Q1b --datatype  mei --context
 ```
