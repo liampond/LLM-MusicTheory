@@ -13,7 +13,7 @@ A modular toolkit for designing and testing music theory prompts for large langu
    ```bash
    curl -sSL https://install.python-poetry.org | python3 -
    ```
-   Or see [Poetry’s official installation guide](https://python-poetry.org/docs/#installing-with-the-official-installer).
+   Or see [Poetry’s official installation guide](https://python-poetry.org/docs/main/#installing-with-the-official-installer).
 
 3. **Install dependencies**
    ```bash
