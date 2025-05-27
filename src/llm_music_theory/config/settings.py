@@ -3,7 +3,7 @@
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # loads from .env
+load_dotenv()
 
 # Default models by provider
 DEFAULT_MODELS = {
