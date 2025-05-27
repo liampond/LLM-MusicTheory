@@ -13,7 +13,7 @@ A modular toolkit for designing and testing music theory prompts for large langu
    ```bash
    curl -sSL https://install.python-poetry.org | python3 -
    ```
-   Or see [Poetry’s official installation guide](https://python-poetry.org/docs/#installation).
+   Or see [Poetry’s official installation guide](https://python-poetry.org/docs/main/#installing-with-the-official-installer).
 
 3. **Install dependencies**
    ```bash
@@ -59,13 +59,22 @@ Then, open `.env` in your editor and replace `your_key` with your actual keys.
 
 ### 2. Get your API keys
 
-- **OpenAI ChatGPT:** [Create OpenAI ChatGPT API Key](https://platform.openai.com/api-keys)
-- **Anthropic Claude:** [Create Anthropic Claude API Key](https://console.anthropic.com/account/keys)
+- **OpenAI ChatGPT:** [Create OpenAI API Key](https://platform.openai.com/api-keys)
+- **Anthropic Claude:** [Create Anthropic API Key](https://console.anthropic.com/account/keys)
 - **DeepSeek:** [Create DeepSeek API Key](https://platform.deepseek.com/api_keys)
-- **Google Gemini:** [Create Google Gemini API Key](https://ai.google.dev/gemini-api/docs/api-key)
+- **Google Gemini:** [Create Gemini API Key](https://ai.google.dev/gemini-api/docs/api-key)
 
 
 > **Note:** You will need to set up billing with each provider. You will be charged for API usage according to their pricing. Be mindful of your usage to avoid unexpected charges.
+
+## Settings and Configuration
+
+Settings and configurations can be changed in `src/llm_music_theory/config/settings.py`. Currently, the only settings that you can change are the models. Each has a different price, performance, and niche. You can find information about the models, pricing, and their string identifiers here:
+
+- **[OpenAI ChatGPT](https://platform.openai.com/docs/pricing):**
+- **[Anthropic Claude](https://docs.anthropic.com/en/docs/about-claude/models/overview):**
+- **[DeepSeek](https://api-docs.deepseek.com/quick_start/pricing):**
+- **[Google Gemini](https://ai.google.dev/gemini-api/docs/models):**
 
 ## Run a Single Prompt
 
