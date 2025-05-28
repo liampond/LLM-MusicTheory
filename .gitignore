@@ -21,3 +21,6 @@ data/
 *.egg-info/
 *.egg
 *.log
+
+# macOS
+.DS_Store
