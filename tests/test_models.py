@@ -1,12 +1,18 @@
+<<<<<<< HEAD
 """
 Test models with mock API responses to avoid actual API calls and costs.
 """
+=======
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import importlib
 import types
+<<<<<<< HEAD
 from unittest.mock import Mock, patch
+=======
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
 
 import pytest
 
@@ -14,6 +20,7 @@ from llm_music_theory.models.base import PromptInput
 
 
 def _patch_dotenv(monkeypatch):
+<<<<<<< HEAD
     """Mock dotenv to avoid loading real environment files."""
     # Since env_loader module doesn't exist, we'll patch the settings directly
     mock_api_keys = {
@@ -49,10 +56,42 @@ def _patch_openai(monkeypatch):
             return mock_response
     
     monkeypatch.setattr("openai.OpenAI", DummyOpenAI)
+=======
+    module = types.ModuleType("dotenv")
+    module.load_dotenv = lambda *args, **kwargs: None
+    monkeypatch.setitem(sys.modules, "dotenv", module)
+
+
+def _patch_openai(monkeypatch):
+    class DummyOpenAI:
+        last_call = None
+
+        def __init__(self, api_key=None, base_url=None):
+            self.api_key = api_key
+            self.base_url = base_url
+            chat = types.SimpleNamespace()
+            chat.completions = types.SimpleNamespace(create=self._create)
+            self.chat = chat
+
+        def _create(self, model, messages, temperature, max_tokens):
+            DummyOpenAI.last_call = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            choice = types.SimpleNamespace(message=types.SimpleNamespace(content="ok"))
+            return types.SimpleNamespace(choices=[choice])
+
+    module = types.ModuleType("openai")
+    module.OpenAI = DummyOpenAI
+    monkeypatch.setitem(sys.modules, "openai", module)
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
     return DummyOpenAI
 
 
 def _patch_anthropic(monkeypatch):
+<<<<<<< HEAD
     """Mock Anthropic client for Claude model."""
     class DummyAnthropic:
         last_call = None
@@ -72,10 +111,34 @@ def _patch_anthropic(monkeypatch):
             return mock_response
     
     monkeypatch.setattr("anthropic.Anthropic", DummyAnthropic)
+=======
+    class DummyAnthropic:
+        last_call = None
+
+        def __init__(self, api_key=None):
+            self.api_key = api_key
+            self.messages = types.SimpleNamespace(create=self._create)
+
+        def _create(self, model, max_tokens, temperature, system, messages):
+            DummyAnthropic.last_call = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "system": system,
+                "messages": messages,
+            }
+            content = [types.SimpleNamespace(text="ok")]
+            return types.SimpleNamespace(content=content)
+
+    module = types.ModuleType("anthropic")
+    module.Anthropic = DummyAnthropic
+    monkeypatch.setitem(sys.modules, "anthropic", module)
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
     return DummyAnthropic
 
 
 def _patch_google(monkeypatch):
+<<<<<<< HEAD
     """Mock Google genai client for Gemini model."""
     class MockModels:
         last_call = None
@@ -101,6 +164,34 @@ def _patch_google(monkeypatch):
 
 def test_chatgpt_query(monkeypatch):
     """Test ChatGPT model with mocked API calls."""
+=======
+    class DummyClient:
+        last_call = None
+
+        def __init__(self, api_key=None):
+            self.api_key = api_key
+            models = types.SimpleNamespace(generate_content=self._generate)
+            self.models = models
+
+        def _generate(self, model, contents, config):
+            DummyClient.last_call = {
+                "model": model,
+                "contents": contents,
+                "config": config,
+            }
+            return types.SimpleNamespace(text="ok")
+
+    genai = types.ModuleType("google.genai")
+    genai.Client = DummyClient
+    google = types.ModuleType("google")
+    google.genai = genai
+    monkeypatch.setitem(sys.modules, "google", google)
+    monkeypatch.setitem(sys.modules, "google.genai", genai)
+    return DummyClient
+
+
+def test_chatgpt_query(monkeypatch):
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
     DummyOpenAI = _patch_openai(monkeypatch)
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     import importlib
@@ -121,7 +212,10 @@ def test_chatgpt_query(monkeypatch):
 
 
 def test_deepseek_query(monkeypatch):
+<<<<<<< HEAD
     """Test DeepSeek model with mocked API calls."""
+=======
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
     DummyOpenAI = _patch_openai(monkeypatch)
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test")
     import importlib
@@ -142,7 +236,10 @@ def test_deepseek_query(monkeypatch):
 
 
 def test_claude_query(monkeypatch):
+<<<<<<< HEAD
     """Test Claude model with mocked API calls."""
+=======
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
     _patch_dotenv(monkeypatch)
     DummyAnthropic = _patch_anthropic(monkeypatch)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
@@ -163,6 +260,26 @@ def test_claude_query(monkeypatch):
 
 
 def test_gemini_query(monkeypatch):
+<<<<<<< HEAD
     """Test Gemini model with mocked API calls."""
     # Skip this test for now due to complex google-genai library mocking requirements
     pytest.skip("Gemini test skipped - complex library mocking required")
+=======
+    DummyClient = _patch_google(monkeypatch)
+    monkeypatch.setenv("GOOGLE_API_KEY", "test")
+    _patch_dotenv(monkeypatch)
+    import importlib
+    gemini_mod = importlib.reload(importlib.import_module("llm_music_theory.models.gemini"))
+    from llm_music_theory.config.settings import DEFAULT_MODELS
+    model = gemini_mod.GeminiModel()
+    inp = PromptInput(system_prompt="s", user_prompt="u", temperature=0.4, max_tokens=8)
+    result = model.query(inp)
+    assert result == "ok"
+    prompt = "s\n\nu"
+    assert DummyClient.last_call == {
+        "model": DEFAULT_MODELS["google"],
+        "contents": prompt,
+        "config": {"temperature": 0.4, "max_output_tokens": 8},
+    }
+
+>>>>>>> 09964a391df58e452cc62beb2d60c13f3c879bdc
