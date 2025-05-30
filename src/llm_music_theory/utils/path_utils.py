@@ -2,6 +2,23 @@ from pathlib import Path
 from typing import List, Optional
 
 
+def find_project_root(start_path: Optional[Path] = None) -> Path:
+    """
+    Find the project root by looking for pyproject.toml file.
+    Returns the directory containing pyproject.toml.
+    """
+    if start_path is None:
+        start_path = Path(__file__).parent
+    
+    current = start_path.resolve()
+    while current != current.parent:
+        if (current / "pyproject.toml").exists():
+            return current
+        current = current.parent
+    
+    raise FileNotFoundError("Could not find project root with pyproject.toml")
+
+
 def load_text_file(path: Path) -> str:
     """
     Read a text file and return its contents stripped of leading/trailing whitespace.
@@ -32,12 +49,22 @@ def find_encoded_file(
     key = datatype.lower()
     if key not in ext_map:
         raise ValueError(f"Unknown datatype '{datatype}'. Valid options: {list(ext_map)}")
+    
+    # First try exact match (for backwards compatibility)
     candidate = encoded_dir / f"{question_number}{ext_map[key]}"
-    if not candidate.exists():
-        if required:
-            raise FileNotFoundError(f"No encoded file found at {candidate}")
-        return None
-    return candidate
+    if candidate.exists():
+        return candidate
+    
+    # If exact match not found, search for files containing the question number
+    if encoded_dir.exists():
+        pattern = f"*{question_number}{ext_map[key]}"
+        matches = list(encoded_dir.glob(pattern))
+        if matches:
+            return matches[0]  # Return first match
+    
+    if required:
+        raise FileNotFoundError(f"No encoded file found for {question_number} in {encoded_dir}")
+    return None
 
 
 def find_question_file(
@@ -48,19 +75,32 @@ def find_question_file(
 ) -> Optional[Path]:
     """
     Locate the question prompt file (contextual or not) for a given question.
-    - context=True  → looks for Q1a.context.txt
-    - context=False → looks for Q1a.nocontext.txt
+    - context=True  → looks for Q1a.context.txt or *Q1a*ContextPrompt.txt
+    - context=False → looks for Q1a.nocontext.txt or *Q1a*NoContextPrompt.txt
 
     Returns the Path if found, or None if required=False and file is missing.
     Raises FileNotFoundError if required=True and file is missing.
     """
+    # First try the exact match format (for backwards compatibility)
     suffix = "context" if context else "nocontext"
     candidate = questions_dir / f"{question_number}.{suffix}.txt"
-    if not candidate.exists():
-        if required:
-            raise FileNotFoundError(f"Question file not found: {candidate}")
-        return None
-    return candidate
+    if candidate.exists():
+        return candidate
+    
+    # If exact match not found, search for files containing the question number
+    if questions_dir.exists():
+        if context:
+            pattern = f"*{question_number}*ContextPrompt.txt"
+        else:
+            pattern = f"*{question_number}*NoContextPrompt.txt"
+        
+        matches = list(questions_dir.glob(pattern))
+        if matches:
+            return matches[0]  # Return first match
+    
+    if required:
+        raise FileNotFoundError(f"Question file not found for {question_number} in {questions_dir}")
+    return None
 
 
 def list_questions(questions_dir: Path) -> List[str]:
@@ -68,10 +108,12 @@ def list_questions(questions_dir: Path) -> List[str]:
     Return all unique question IDs in the folder, e.g. ["Q1a","Q1b",...].
     Scans both context and nocontext variants.
     """
-    ids = set()
-    for file in questions_dir.glob("Q*.txt"):
-        ids.add(file.stem.split(".")[0])
-    return sorted(ids)
+    return sorted(
+        set(
+            f.stem
+            for f in questions_dir.rglob("*.txt")
+        )
+    )
 
 
 def list_datatypes(encoded_dir: Path) -> List[str]:

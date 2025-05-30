@@ -157,10 +157,15 @@ class PromptRunner:
         then fallback to package prompts/questions/{context|no_context}/{datatype}/….
         """
         suffix = "context" if self.context else "no_context"
-        # External
-        questions_dir = (
-            self.base_dirs["prompts"] / self.exam_date / suffix / self.datatype
-        )
+        
+        # External path structure differs for context vs no_context
+        if self.context:
+            # Context files are organized by datatype: data/prompts/{exam_date}/context/{datatype}/
+            questions_dir = self.base_dirs["prompts"] / self.exam_date / suffix / self.datatype
+        else:
+            # No context files are all in one directory: data/prompts/{exam_date}/no_context/
+            questions_dir = self.base_dirs["prompts"] / self.exam_date / suffix
+        
         ext_q = find_question_file(
             question_number=self.question_number,
             context=self.context,

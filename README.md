@@ -109,3 +109,59 @@ You can also list available questions, datatypes, or guides:
 ```bash
 poetry run python src/llm_music_theory/cli/run_single.py --list-questions
 ```
+
+## Testing
+
+This project includes comprehensive tests that validate the prompt generation process **without making actual API calls** to avoid costs. The tests use mock APIs to verify that prompts are compiled correctly and would be sent to the LLMs properly.
+
+### Running Tests
+
+**Quick test run:**
+```bash
+python run_tests.py
+```
+
+**Run specific test categories:**
+```bash
+python run_tests.py models        # Test model interfaces
+python run_tests.py prompt        # Test prompt building
+python run_tests.py runner        # Test prompt runner
+python run_tests.py integration   # Test CLI integration
+python run_tests.py comprehensive # Test with real data
+python run_tests.py utils         # Test utility functions
+python run_tests.py fast          # Quick tests only
+```
+
+**Using Poetry directly:**
+```bash
+poetry run pytest tests/ -v                    # Run all tests
+poetry run pytest tests/test_models.py -v      # Test specific file
+poetry run pytest tests/ -k "test_prompt"      # Test specific pattern
+```
+
+### What the Tests Validate
+
+- **Model Interface Testing**: Verifies all LLM models (ChatGPT, Claude, Gemini, DeepSeek) receive correctly formatted prompts
+- **Prompt Building**: Validates that prompt components are assembled correctly with proper structure
+- **Data Loading**: Tests loading of encoded music files, questions, guides, and system prompts
+- **CLI Integration**: Verifies command-line interface works without API calls
+- **Real Data Testing**: Uses actual project data to validate end-to-end prompt compilation
+- **Parameter Passing**: Ensures temperature, max_tokens, and other settings are passed correctly
+- **Error Handling**: Tests proper handling of missing files and invalid inputs
+
+### Test Environment
+
+Tests use mock API keys and never make actual API calls:
+- Mock environment variables are set automatically
+- Real prompt compilation is tested but API calls are intercepted
+- All tests run safely without incurring API costs
+- Tests validate prompt correctness before any expensive operations
+
+### Continuous Integration
+
+GitHub Actions automatically run tests on:
+- Push to main/develop branches
+- Pull request creation
+- Multiple Python versions (3.11, 3.12, 3.13)
+
+The CI pipeline ensures all prompt generation is working correctly before merging changes.
