@@ -10,6 +10,25 @@ import tempfile
 import pytest
 import argparse
 from io import StringIO
+import types
+
+# Stub external API modules so dispatcher imports succeed without dependencies
+openai_stub = types.ModuleType("openai")
+openai_stub.OpenAI = object
+sys.modules.setdefault("openai", openai_stub)
+
+anthropic_stub = types.ModuleType("anthropic")
+anthropic_stub.Anthropic = object
+sys.modules.setdefault("anthropic", anthropic_stub)
+
+google_mod = types.ModuleType("google")
+google_genai_mod = types.ModuleType("genai")
+google_mod.genai = google_genai_mod
+sys.modules.setdefault("google", google_mod)
+sys.modules.setdefault("google.genai", google_genai_mod)
+dotenv_stub = types.ModuleType("dotenv")
+dotenv_stub.load_dotenv = lambda *args, **kwargs: None
+sys.modules.setdefault("dotenv", dotenv_stub)
 
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.models.base import LLMInterface, PromptInput

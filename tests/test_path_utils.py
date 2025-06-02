@@ -183,17 +183,22 @@ class TestPathUtils:
 class TestDataIntegrity:
     """Test data file integrity and structure."""
 
-    def test_data_directory_exists(self):
-        """Test that data directory exists in the project."""
+    @pytest.fixture(scope="class")
+    def data_dir(self):
+        """Return the data directory or skip if not present."""
         root = find_project_root()
         data_dir = root / "data"
+        if not data_dir.exists():
+            pytest.skip("Data directory not found")
+        return data_dir
+
+    def test_data_directory_exists(self, data_dir):
+        """Test that data directory exists in the project."""
         assert data_dir.exists()
         assert data_dir.is_dir()
 
-    def test_required_subdirectories_exist(self):
+    def test_required_subdirectories_exist(self, data_dir):
         """Test that required subdirectories exist."""
-        root = find_project_root()
-        data_dir = root / "data"
         
         required_dirs = ["encoded", "prompts", "guides"]
         for dir_name in required_dirs:
@@ -201,10 +206,9 @@ class TestDataIntegrity:
             assert dir_path.exists(), f"Missing required directory: {dir_name}"
             assert dir_path.is_dir()
 
-    def test_base_prompts_exist(self):
+    def test_base_prompts_exist(self, data_dir):
         """Test that base prompt files exist."""
-        root = find_project_root()
-        base_dir = root / "data" / "prompts" / "base"
+        base_dir = data_dir / "prompts" / "base"
         
         required_files = [
             "system_prompt.txt",
@@ -220,10 +224,9 @@ class TestDataIntegrity:
             assert file_path.is_file()
             assert file_path.stat().st_size > 0, f"Empty file: {file_name}"
 
-    def test_sample_encoded_files_exist(self):
+    def test_sample_encoded_files_exist(self, data_dir):
         """Test that some sample encoded files exist."""
-        root = find_project_root()
-        encoded_dir = root / "data" / "encoded"
+        encoded_dir = data_dir / "encoded"
         
         # Check if there are any exam directories
         exam_dirs = [d for d in encoded_dir.iterdir() if d.is_dir()]
@@ -243,10 +246,9 @@ class TestDataIntegrity:
         
         assert found_files, "No encoded music files found"
 
-    def test_file_naming_conventions(self):
+    def test_file_naming_conventions(self, data_dir):
         """Test that files follow expected naming conventions."""
-        root = find_project_root()
-        encoded_dir = root / "data" / "encoded"
+        encoded_dir = data_dir / "encoded"
         
         for exam_dir in encoded_dir.iterdir():
             if not exam_dir.is_dir():

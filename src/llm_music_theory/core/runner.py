@@ -191,15 +191,22 @@ class PromptRunner:
         External first (data/guides/*.txt), then fallback to package prompts/guides/*.txt.
         """
         guides_list: List[str] = []
+        if not self.context:
+            return guides_list
+
         ext_dir = self.base_dirs["guides"]
-        if self.context and ext_dir.exists():
+        if ext_dir.exists():
             for guide_name in list_guides(ext_dir):
                 guides_list.append(load_text_file(ext_dir / f"{guide_name}.txt"))
             if guides_list:
                 return guides_list
 
-        # Fallback to bundled guides
-        pkg = resources.files("llm_music_theory.prompts.guides")
+        # Fallback to bundled guides if present
+        try:
+            pkg = resources.files("llm_music_theory.prompts.guides")
+        except ModuleNotFoundError:
+            return guides_list
+
         for p in pkg.iterdir():
             if p.suffix == ".txt":
                 guides_list.append(p.read_text(encoding="utf-8"))
