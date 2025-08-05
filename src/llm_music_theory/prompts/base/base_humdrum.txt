@@ -1,1 +1,0 @@
-Music format: HumDrum. If writing music, make sure the file is renderable. Do not put unnecessary brackets or delimiters such as ``` at the beginning or end.

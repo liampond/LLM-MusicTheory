@@ -10,14 +10,11 @@ packages = [
   { include = "llm_music_theory", from = "src" }
 ]
 
-# Include your sample data in the published package
-include = [
-  "src/llm_music_theory/encoded/**",   # only the core samples
-  "src/llm_music_theory/prompts/**"
-]
+# Data files are now separate from the package in the data/ directory
+# This keeps the distributed package lightweight
 
 [tool.poetry.dependencies]
-python                = "^3.13"
+python                = "^3.11"
 requests              = "^2.31.0"
 pyyaml                = "^6.0.1"
 tqdm                  = "^4.66.1"
@@ -33,9 +30,11 @@ pytest                = "^8.1.1"
 pytest-cov           = "^4.0.0"
 
 [tool.poetry.scripts]
-# Now you can run with `poetry run run-single` or `poetry run run-batch`
+# CLI entry points for the application
 run-single  = "llm_music_theory.cli.run_single:main"
 run-batch   = "llm_music_theory.cli.run_batch:main"
+# Test runner (alternative to scripts/run_tests.py)
+run-tests   = "scripts.run_tests:main"
 
 [build-system]
 requires    = ["poetry-core"]
