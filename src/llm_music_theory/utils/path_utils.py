@@ -120,13 +120,35 @@ def list_datatypes(encoded_dir: Path) -> List[str]:
     """
     Return all supported datatypes based on file extensions present,
     e.g. ["mei","musicxml","abc","humdrum"].
+    Searches both direct files and in subdirectories.
     """
     ext_map = {".mei": "mei", ".musicxml": "musicxml", ".krn": "humdrum", ".abc": "abc"}
     found = set()
+    
+    if not encoded_dir.exists():
+        return []
+    
+    # Search for files directly in the directory
     for file in encoded_dir.iterdir():
-        dt = ext_map.get(file.suffix)
-        if dt:
-            found.add(dt)
+        if file.is_file():
+            dt = ext_map.get(file.suffix)
+            if dt:
+                found.add(dt)
+    
+    # Search for subdirectories that match datatypes or contain files with matching extensions
+    for subdir in encoded_dir.iterdir():
+        if subdir.is_dir():
+            # Check if the directory name itself is a datatype
+            if subdir.name in ext_map.values():
+                found.add(subdir.name)
+            else:
+                # Search for files in subdirectories
+                for file in subdir.rglob("*"):
+                    if file.is_file():
+                        dt = ext_map.get(file.suffix)
+                        if dt:
+                            found.add(dt)
+    
     return sorted(found)
 
 

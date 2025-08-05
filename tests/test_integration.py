@@ -321,7 +321,7 @@ class TestErrorHandling:
     """Test error handling in the integration workflow."""
 
     def test_missing_encoded_file(self):
-        """Test handling of missing encoded files."""
+        """Test handling of missing encoded files with placeholder content."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             
@@ -337,6 +337,12 @@ class TestErrorHandling:
             for path in base_dirs.values():
                 path.mkdir(parents=True, exist_ok=True)
             
+            # Create base prompts but no encoded files
+            prompts_base = temp_path / "prompts" / "base"
+            prompts_base.mkdir(parents=True)
+            (prompts_base / "system_prompt.txt").write_text("System")
+            (prompts_base / "base_mei.txt").write_text("Format: MEI")
+            
             mock_llm = MockLLMForIntegration("test")
             
             runner = PromptRunner(
@@ -350,11 +356,17 @@ class TestErrorHandling:
                 save=False
             )
             
-            with pytest.raises(FileNotFoundError):
-                runner.run()
+            # Should not raise error, but should contain placeholder content
+            response = runner.run()
+            assert response == "Integration test response"  # Mock response
+            
+            # Verify placeholder content was used
+            assert len(mock_llm.query_log) > 0
+            last_query = mock_llm.query_log[-1]
+            assert "[MEI encoded music data for Q99 would be here]" in last_query['user_prompt']
 
     def test_missing_question_file(self):
-        """Test handling of missing question files."""
+        """Test handling of missing question files with placeholder content."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             
@@ -389,5 +401,11 @@ class TestErrorHandling:
                 save=False
             )
             
-            with pytest.raises(FileNotFoundError):
-                runner.run()
+            # Should not raise error, but should contain placeholder content
+            response = runner.run()
+            assert response == "Integration test response"  # Mock response
+            
+            # Verify placeholder content was used
+            assert len(mock_llm.query_log) > 0
+            last_query = mock_llm.query_log[-1]
+            assert "[Question Q1a prompt would be here]" in last_query['user_prompt']

@@ -3,10 +3,9 @@
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
-from importlib import resources
 
 from llm_music_theory.models.base import LLMInterface, PromptInput
-from llm_music_theory.prompts.prompt_builder import PromptBuilder
+from llm_music_theory.core.prompt_builder import PromptBuilder
 from llm_music_theory.utils.path_utils import (
     load_text_file,
     find_encoded_file,
@@ -112,27 +111,30 @@ class PromptRunner:
 
     def _load_system_prompt(self) -> str:
         """
-        External first, fallback to package at prompts/base/system_prompt.txt
+        Load system prompt from data/prompts/base/system_prompt.txt
         """
-        ext = self.base_dirs["prompts"] / "base" / "system_prompt.txt"
-        if ext.exists():
-            return load_text_file(ext)
-        return resources.read_text("llm_music_theory.prompts.base", "system_prompt.txt")
+        sys_prompt_path = self.base_dirs["prompts"] / "base" / "system_prompt.txt"
+        if sys_prompt_path.exists():
+            return load_text_file(sys_prompt_path)
+        
+        # Default system prompt if none exists
+        return "You are a music theory expert. Analyze the provided music and answer the question accurately."
 
     def _load_base_format_prompt(self) -> str:
         """
-        External first, fallback to package at prompts/base/base_{datatype}.txt
+        Load format-specific prompt from data/prompts/base/base_{datatype}.txt
         """
         filename = f"base_{self.datatype}.txt"
-        ext = self.base_dirs["prompts"] / "base" / filename
-        if ext.exists():
-            return load_text_file(ext)
-        return resources.read_text("llm_music_theory.prompts.base", filename)
+        format_prompt_path = self.base_dirs["prompts"] / "base" / filename
+        if format_prompt_path.exists():
+            return load_text_file(format_prompt_path)
+        
+        # Default format prompt if none exists
+        return f"The music is provided in {self.datatype.upper()} format."
 
     def _load_encoded(self) -> str:
         """
-        External first (data/encoded/{exam_date}/{datatype}/Q….ext),
-        then fallback to package under encoded/{datatype}/Q….ext.
+        Load encoded music file from data/encoded/{exam_date}/{datatype}/
         """
         # External path includes exam_date
         ext_dir = self.base_dirs["encoded"] / self.exam_date / self.datatype
@@ -145,16 +147,23 @@ class PromptRunner:
         if ext_path:
             return load_text_file(ext_path)
 
-        # Fallback to package data
-        pkg_dir = resources.files(f"llm_music_theory.encoded.{self.datatype}")
-        filename = f"{self.question_number}{self._EXT_MAP[self.datatype]}"
-        with resources.as_file(pkg_dir / filename) as p:
-            return p.read_text(encoding="utf-8")
+        # If no specific exam date, try default location
+        default_dir = self.base_dirs["encoded"] / self.datatype
+        ext_path = find_encoded_file(
+            question_number=self.question_number,
+            datatype=self.datatype,
+            encoded_dir=default_dir,
+            required=False
+        )
+        if ext_path:
+            return load_text_file(ext_path)
+        
+        # Return placeholder if no encoded file found
+        return f"[{self.datatype.upper()} encoded music data for {self.question_number} would be here]"
 
     def _load_question(self) -> str:
         """
-        External first (data/prompts/{exam_date}/{context|no_context}/{datatype}/…),
-        then fallback to package prompts/questions/{context|no_context}/{datatype}/….
+        Load question prompt from data/prompts/{exam_date}/{context|no_context}/
         """
         suffix = "context" if self.context else "no_context"
         
@@ -175,34 +184,35 @@ class PromptRunner:
         if ext_q:
             return load_text_file(ext_q)
 
-        # Fallback to package data
-        pkg_root = resources.files("llm_music_theory.prompts.questions")
-        pkg_dir = pkg_root / suffix / self.datatype
-        for candidate in pkg_dir.iterdir():
-            if candidate.stem.startswith(self.question_number):
-                return candidate.read_text(encoding="utf-8")
+        # Try default location without exam date
+        if self.context:
+            questions_dir = self.base_dirs["prompts"] / suffix / self.datatype
+        else:
+            questions_dir = self.base_dirs["prompts"] / suffix
 
-        raise FileNotFoundError(
-            f"Could not find prompt for {self.question_number} in '{pkg_dir}'"
+        ext_q = find_question_file(
+            question_number=self.question_number,
+            context=self.context,
+            questions_dir=questions_dir,
+            required=False
         )
+        if ext_q:
+            return load_text_file(ext_q)
+        
+        # Return placeholder if no question found
+        return f"[Question {self.question_number} prompt would be here]"
 
     def _load_guides(self) -> List[str]:
         """
-        External first (data/guides/*.txt), then fallback to package prompts/guides/*.txt.
+        Load guides from guides directory.
         """
         guides_list: List[str] = []
-        ext_dir = self.base_dirs["guides"]
-        if self.context and ext_dir.exists():
-            for guide_name in list_guides(ext_dir):
-                guides_list.append(load_text_file(ext_dir / f"{guide_name}.txt"))
-            if guides_list:
-                return guides_list
-
-        # Fallback to bundled guides
-        pkg = resources.files("llm_music_theory.prompts.guides")
-        for p in pkg.iterdir():
-            if p.suffix == ".txt":
-                guides_list.append(p.read_text(encoding="utf-8"))
+        guides_dir = self.base_dirs["guides"]
+        
+        if self.context and guides_dir.exists():
+            for guide_name in list_guides(guides_dir):
+                guides_list.append(load_text_file(guides_dir / f"{guide_name}.txt"))
+            
         return guides_list
 
     def _save_response(self, response: str) -> None:

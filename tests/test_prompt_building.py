@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 import tempfile
 import pytest
 
-from llm_music_theory.prompts.prompt_builder import PromptBuilder
+from llm_music_theory.core.prompt_builder import PromptBuilder
 from llm_music_theory.models.base import PromptInput
 
 
