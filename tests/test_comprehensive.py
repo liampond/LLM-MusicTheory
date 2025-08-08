@@ -2,9 +2,6 @@
 Comprehensive end-to-end test that validates prompt generation using real project data.
 This test stops just before making API calls to avoid costs.
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pathlib import Path
 import pytest
 from unittest.mock import Mock
@@ -50,6 +47,10 @@ class TestComprehensivePromptGeneration:
         if not data_dir.exists():
             pytest.skip("Data directory not found")
         
+        # Check if system prompt exists - if not, skip tests that need it
+        system_prompt_path = data_dir / "prompts" / "base" / "system_prompt.txt"
+        has_system_prompt = system_prompt_path.exists()
+        
         # Get available exam dates
         encoded_dir = data_dir / "encoded"
         exam_dates = []
@@ -60,6 +61,7 @@ class TestComprehensivePromptGeneration:
             'root': root,
             'data_dir': data_dir,
             'exam_dates': exam_dates,
+            'has_system_prompt': has_system_prompt,
             'base_dirs': {
                 "encoded": data_dir / "encoded",
                 "prompts": data_dir / "prompts",
@@ -296,74 +298,72 @@ class TestComprehensivePromptGeneration:
 
     def test_all_available_datatypes(self, project_structure):
         """Test prompt generation for all available datatypes in the project."""
+        if not project_structure['has_system_prompt']:
+            pytest.skip("System prompt not available in legacy data - skipping comprehensive test")
+            
         mock_llm = ComprehensiveTestLLM("datatype_test")
         base_dirs = project_structure['base_dirs']
         
         encoded_dir = base_dirs['encoded']
-        exam_dirs = [d for d in encoded_dir.iterdir() if d.is_dir()]
+        datatype_dirs = [d for d in encoded_dir.iterdir() if d.is_dir()]
         
-        if not exam_dirs:
-            pytest.skip("No exam directories found")
+        if not datatype_dirs:
+            pytest.skip("No datatype directories found")
         
         tested_datatypes = set()
         
-        for exam_dir in exam_dirs:
-            exam_date = exam_dir.name
+        for datatype_dir in datatype_dirs:
+            datatype = datatype_dir.name
             
-            for datatype_dir in exam_dir.iterdir():
-                if not datatype_dir.is_dir():
-                    continue
+            if datatype in tested_datatypes:
+                continue
+            
+            files = list(datatype_dir.glob("*"))
+            if not files:
+                continue
+            
+            # Extract question from filename
+            question = None
+            for file_path in files:
+                stem = file_path.stem
+                # Look for question pattern like Q4a, Q1, etc.
+                if 'Q' in stem:
+                    # Extract the part after the last 'Q'
+                    q_parts = stem.split('Q')
+                    if len(q_parts) > 1:
+                        question_part = q_parts[-1]
+                        # Ensure it starts with a number
+                        if question_part and question_part[0].isdigit():
+                            question = 'Q' + question_part
+                            break
+            
+            if not question:
+                continue
+            
+            runner = PromptRunner(
+                model=mock_llm,
+                question_number=question,
+                datatype=datatype,
+                context=False,
+                exam_date="",  # Use default
+                base_dirs=base_dirs,
+                temperature=0.0,
+                save=False
+            )
+            
+            try:
+                runner.run()
+                tested_datatypes.add(datatype)
                 
-                datatype = datatype_dir.name
-                if datatype in tested_datatypes:
-                    continue
+                prompt_data = mock_llm.captured_prompts[-1]
+                assert prompt_data['user_length'] > 0
                 
-                files = list(datatype_dir.glob("*"))
-                if not files:
-                    continue
+                # Verify datatype-specific content
+                user_prompt = prompt_data['user_prompt']
+                assert datatype.lower() in user_prompt.lower() or datatype.upper() in user_prompt
                 
-                # Extract question from filename
-                question = None
-                for file_path in files:
-                    stem = file_path.stem
-                    # Look for question pattern like Q4a, Q1, etc.
-                    if 'Q' in stem:
-                        # Extract the part after the last 'Q'
-                        q_parts = stem.split('Q')
-                        if len(q_parts) > 1:
-                            question_part = q_parts[-1]
-                            # Ensure it starts with a number
-                            if question_part and question_part[0].isdigit():
-                                question = 'Q' + question_part
-                                break
-                
-                if not question:
-                    continue
-                
-                runner = PromptRunner(
-                    model=mock_llm,
-                    question_number=question,
-                    datatype=datatype,
-                    context=False,
-                    exam_date=exam_date,
-                    base_dirs=base_dirs,
-                    temperature=0.0,
-                    save=False
-                )
-                
-                try:
-                    runner.run()
-                    tested_datatypes.add(datatype)
-                    
-                    prompt_data = mock_llm.captured_prompts[-1]
-                    assert prompt_data['user_length'] > 0
-                    
-                    # Verify datatype-specific content
-                    user_prompt = prompt_data['user_prompt']
-                    assert datatype.lower() in user_prompt.lower() or datatype.upper() in user_prompt
-                    
-                except FileNotFoundError:
-                    continue
+            except FileNotFoundError:
+                continue
         
         # Should have tested at least one datatype
         assert len(tested_datatypes) > 0, f"No datatypes could be tested. Available: {list(tested_datatypes)}"
@@ -405,6 +405,9 @@ class TestComprehensivePromptGeneration:
 
     def test_temperature_and_token_parameter_passing(self, project_structure):
         """Test that parameters are correctly passed through the system."""
+        if not project_structure['has_system_prompt']:
+            pytest.skip("System prompt not available in legacy data - skipping comprehensive test")
+            
         mock_llm = ComprehensiveTestLLM("param_test")
         base_dirs = project_structure['base_dirs']
         exam_dates = project_structure['exam_dates']

@@ -10,19 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from llm_music_theory.core.dispatcher import get_llm
 from llm_music_theory.core.runner import PromptRunner
-from llm_music_theory.utils.path_utils import list_questions, list_datatypes
-
-
-def find_project_root(marker_files=("pyproject.toml", ".git")) -> Path:
-    """
-    Walk upwards from the current working directory to find the project root,
-    defined as the first directory containing one of the marker files.
-    """
-    cwd = Path.cwd()
-    for parent in (cwd, *cwd.parents):
-        if any((parent / m).exists() for m in marker_files):
-            return parent
-    raise RuntimeError("Could not locate project root")
+from llm_music_theory.utils.path_utils import find_project_root, list_questions, list_datatypes
 
 
 def load_project_env():

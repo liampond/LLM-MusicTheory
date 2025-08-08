@@ -1,9 +1,6 @@
 """
 Test models with mock API responses to avoid actual API calls and costs.
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import importlib
 import types
 from unittest.mock import Mock, patch

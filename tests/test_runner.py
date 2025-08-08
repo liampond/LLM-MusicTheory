@@ -1,9 +1,7 @@
 """
 Test the PromptRunner class for proper prompt compilation without API calls.
 """
-import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 import tempfile

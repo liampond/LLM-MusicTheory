@@ -1,9 +1,6 @@
 """
 Test path utilities and data loading functions.
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pathlib import Path
 import tempfile
 import pytest
