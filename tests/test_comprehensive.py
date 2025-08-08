@@ -45,7 +45,7 @@ class TestComprehensivePromptGeneration:
     def project_structure(self):
         """Get real project structure for testing."""
         root = find_project_root()
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         
         if not data_dir.exists():
             pytest.skip("Data directory not found")

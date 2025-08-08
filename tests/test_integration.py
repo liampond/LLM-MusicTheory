@@ -98,7 +98,7 @@ class TestCLIIntegration:
     def test_prompt_compilation_workflow(self, mock_all_models):
         """Test the complete prompt compilation workflow."""
         root = Path(__file__).parent.parent
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         
         if not data_dir.exists():
             pytest.skip("Data directory not found")
@@ -172,7 +172,7 @@ class TestCLIIntegration:
     def test_multiple_models_workflow(self, mock_all_models):
         """Test that different models can be used in the workflow."""
         root = Path(__file__).parent.parent
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         
         if not data_dir.exists():
             pytest.skip("Data directory not found")
@@ -215,7 +215,7 @@ class TestCLIIntegration:
     def test_context_vs_no_context(self, mock_all_models):
         """Test context vs no-context prompt differences."""
         root = Path(__file__).parent.parent
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         
         if not data_dir.exists():
             pytest.skip("Data directory not found")
@@ -278,7 +278,7 @@ class TestCLIIntegration:
     def test_temperature_and_token_settings(self, mock_all_models):
         """Test that temperature and token settings are passed through."""
         root = Path(__file__).parent.parent
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         
         if not data_dir.exists():
             pytest.skip("Data directory not found")

@@ -118,15 +118,22 @@ def list_questions(questions_dir: Path) -> List[str]:
 
 def list_datatypes(encoded_dir: Path) -> List[str]:
     """
-    Return all supported datatypes based on file extensions present,
+    Return all supported datatypes based on subdirectories present,
     e.g. ["mei","musicxml","abc","humdrum"].
     """
-    ext_map = {".mei": "mei", ".musicxml": "musicxml", ".krn": "humdrum", ".abc": "abc"}
+    known_datatypes = {"mei", "musicxml", "humdrum", "abc"}
     found = set()
-    for file in encoded_dir.iterdir():
-        dt = ext_map.get(file.suffix)
-        if dt:
-            found.add(dt)
+    
+    if not encoded_dir.exists():
+        return []
+    
+    # Check for subdirectories that match known datatypes
+    for subdir in encoded_dir.iterdir():
+        if subdir.is_dir() and subdir.name in known_datatypes:
+            # Verify the directory has files
+            if any(subdir.iterdir()):
+                found.add(subdir.name)
+    
     return sorted(found)
 
 

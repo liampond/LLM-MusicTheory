@@ -113,8 +113,8 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=Path,
-        default=Path.cwd() / "data",
-        help="Root folder for encoded/ and prompts/ (default: ./data)"
+        default=Path.cwd() / "data" / "LLM-RCM",
+        help="Root folder for encoded/ and prompts/ (default: ./data/LLM-RCM)"
     )
     parser.add_argument(
         "--outputs-dir",

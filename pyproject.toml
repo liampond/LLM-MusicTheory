@@ -12,12 +12,12 @@ packages = [
 
 # Include your sample data in the published package
 include = [
-  "src/llm_music_theory/encoded/**",   # only the core samples
-  "src/llm_music_theory/prompts/**"
+  "data/LLM-RCM/encoded/**",   # sample music files
+  "data/LLM-RCM/prompts/**"    # prompt templates and questions
 ]
 
 [tool.poetry.dependencies]
-python                = "^3.13"
+python                = "^3.11"
 requests              = "^2.31.0"
 pyyaml                = "^6.0.1"
 tqdm                  = "^4.66.1"

@@ -1,4 +1,20 @@
-# LLM-MusicTheory
+# LLM-Music2. **Install Poetry (if you don't have it)**
+   ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+   Or see [Poetry's official installation guide](https://python-poetry.org/docs/main/#installing-with-the-official-installer).
+   
+   **Alternative installation via pipx (recommended):**
+   ```bash
+   python3 -m pip install --user pipx
+   pipx install poetry
+   ```
+   
+   **Add Poetry to your PATH:**
+   ```bash
+   export PATH="$HOME/.local/bin:$PATH"
+   ```
+   You may need to add this line to your `~/.bashrc` or `~/.zshrc` file and restart your terminal.y
 
 A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying ChatGPT, Claude, Gemini, and DeepSeek. Built for experimentation and evaluation on official Royal Conservatory of Music (RCM) exam questions.
 
@@ -30,7 +46,7 @@ A modular toolkit for designing and testing music theory prompts for large langu
    ```
 
 6. **Check your Python version**
-   This project requires Python 3.9 or higher. You can check your version with:
+   This project requires Python 3.11 or higher. You can check your version with:
    ```bash
    python --version
    ```
@@ -39,7 +55,7 @@ A modular toolkit for designing and testing music theory prompts for large langu
    - If you get errors about missing dependencies, try running `poetry lock --no-update` then `poetry install` again.
    - If you have issues with conflicting Python versions, ensure your virtual environment uses the correct Python version:
      ```bash
-     poetry env use python3.13  # or your preferred version >=3.9
+     poetry env use python3.11  # or your preferred version >=3.11
      ```
 
 ## Environment Variables
@@ -95,7 +111,7 @@ poetry run python src/llm_music_theory/cli/run_single.py --model gemini --questi
 - `--temperature`: Sampling [temperature](https://learnprompting.org/docs/intermediate/configuration_hyperparameters?srsltid=AfmBOoo66sF4m6TbQQHn8HGvoJvoLwaoUITh6xeb2jbSHLC3LzBOcI0Z) (creativity) for the model (default: `0.0`)
 - `--max-tokens`: Maximum tokens for the response (optional)
 - `--save`: Save the model response to the outputs directory
-- `--data-dir`: Path to your data directory (default: `./data`)
+- `--data-dir`: Path to your data directory (default: `./data/LLM-RCM`)
 - `--outputs-dir`: Path to your outputs directory (default: `./outputs`)
 
 ### Listing Available Resources

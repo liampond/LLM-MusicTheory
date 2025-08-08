@@ -15,7 +15,6 @@ __pycache__/
 
 # Output and data directories
 outputs/
-data/
 
 # Python-related
 *.egg-info/

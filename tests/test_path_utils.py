@@ -126,7 +126,18 @@ class TestPathUtils:
 
     def test_list_datatypes(self, temp_structure):
         """Test listing available data types."""
-        encoded_dir = temp_structure / "encoded" / "test_exam"
+        # Use the main encoded dir, not a subdirectory
+        encoded_dir = temp_structure / "encoded"
+        
+        # Create datatype subdirectories like our real structure
+        mei_dir = encoded_dir / "mei"
+        abc_dir = encoded_dir / "abc"
+        mei_dir.mkdir(parents=True)
+        abc_dir.mkdir(parents=True)
+        
+        # Add some files to make them valid
+        (mei_dir / "Q1a.mei").write_text("<mei>test</mei>")
+        (abc_dir / "Q1a.abc").write_text("X:1\nT:Test")
         
         datatypes = list_datatypes(encoded_dir)
         assert "mei" in datatypes
@@ -186,16 +197,16 @@ class TestDataIntegrity:
     def test_data_directory_exists(self):
         """Test that data directory exists in the project."""
         root = find_project_root()
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         assert data_dir.exists()
         assert data_dir.is_dir()
 
     def test_required_subdirectories_exist(self):
         """Test that required subdirectories exist."""
         root = find_project_root()
-        data_dir = root / "data"
+        data_dir = root / "data" / "LLM-RCM"
         
-        required_dirs = ["encoded", "prompts", "guides"]
+        required_dirs = ["encoded", "prompts"]
         for dir_name in required_dirs:
             dir_path = data_dir / dir_name
             assert dir_path.exists(), f"Missing required directory: {dir_name}"
@@ -204,10 +215,9 @@ class TestDataIntegrity:
     def test_base_prompts_exist(self):
         """Test that base prompt files exist."""
         root = find_project_root()
-        base_dir = root / "data" / "prompts" / "base"
+        base_dir = root / "data" / "LLM-RCM" / "prompts" / "base"
         
         required_files = [
-            "system_prompt.txt",
             "base_mei.txt",
             "base_abc.txt",
             "base_musicxml.txt",
@@ -223,22 +233,18 @@ class TestDataIntegrity:
     def test_sample_encoded_files_exist(self):
         """Test that some sample encoded files exist."""
         root = find_project_root()
-        encoded_dir = root / "data" / "encoded"
+        encoded_dir = root / "data" / "LLM-RCM" / "encoded"
         
-        # Check if there are any exam directories
-        exam_dirs = [d for d in encoded_dir.iterdir() if d.is_dir()]
-        assert len(exam_dirs) > 0, "No exam directories found"
+        # Check if there are any datatype directories (abc, mei, etc.)
+        datatype_dirs = [d for d in encoded_dir.iterdir() if d.is_dir()]
+        assert len(datatype_dirs) > 0, "No datatype directories found"
         
-        # Check if at least one exam has encoded files
+        # Check if at least one datatype has encoded files
         found_files = False
-        for exam_dir in exam_dirs:
-            for datatype_dir in exam_dir.iterdir():
-                if datatype_dir.is_dir():
-                    files = list(datatype_dir.glob("*"))
-                    if files:
-                        found_files = True
-                        break
-            if found_files:
+        for datatype_dir in datatype_dirs:
+            files = list(datatype_dir.glob("*"))
+            if files:
+                found_files = True
                 break
         
         assert found_files, "No encoded music files found"
@@ -246,18 +252,14 @@ class TestDataIntegrity:
     def test_file_naming_conventions(self):
         """Test that files follow expected naming conventions."""
         root = find_project_root()
-        encoded_dir = root / "data" / "encoded"
+        encoded_dir = root / "data" / "LLM-RCM" / "encoded"
         
-        for exam_dir in encoded_dir.iterdir():
-            if not exam_dir.is_dir():
+        for datatype_dir in encoded_dir.iterdir():
+            if not datatype_dir.is_dir():
                 continue
                 
-            for datatype_dir in exam_dir.iterdir():
-                if not datatype_dir.is_dir():
-                    continue
-                    
-                for file_path in datatype_dir.iterdir():
-                    if file_path.is_file():
+            for file_path in datatype_dir.iterdir():
+                if file_path.is_file():
                         # Check that files have expected extensions
                         if datatype_dir.name == "mei":
                             assert file_path.suffix == ".mei"

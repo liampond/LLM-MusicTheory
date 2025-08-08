@@ -112,27 +112,26 @@ class PromptRunner:
 
     def _load_system_prompt(self) -> str:
         """
-        External first, fallback to package at prompts/base/system_prompt.txt
+        Load system prompt from external data directory.
         """
         ext = self.base_dirs["prompts"] / "base" / "system_prompt.txt"
         if ext.exists():
             return load_text_file(ext)
-        return resources.read_text("llm_music_theory.prompts.base", "system_prompt.txt")
+        raise FileNotFoundError(f"System prompt not found at {ext}")
 
     def _load_base_format_prompt(self) -> str:
         """
-        External first, fallback to package at prompts/base/base_{datatype}.txt
+        Load base format prompt from external data directory.
         """
         filename = f"base_{self.datatype}.txt"
         ext = self.base_dirs["prompts"] / "base" / filename
         if ext.exists():
             return load_text_file(ext)
-        return resources.read_text("llm_music_theory.prompts.base", filename)
+        raise FileNotFoundError(f"Base format prompt not found at {ext}")
 
     def _load_encoded(self) -> str:
         """
-        External first (data/encoded/{exam_date}/{datatype}/Q….ext),
-        then fallback to package under encoded/{datatype}/Q….ext.
+        Load encoded music file from external data directory.
         """
         # External path includes exam_date
         ext_dir = self.base_dirs["encoded"] / self.exam_date / self.datatype
@@ -145,11 +144,15 @@ class PromptRunner:
         if ext_path:
             return load_text_file(ext_path)
 
-        # Fallback to package data
-        pkg_dir = resources.files(f"llm_music_theory.encoded.{self.datatype}")
-        filename = f"{self.question_number}{self._EXT_MAP[self.datatype]}"
-        with resources.as_file(pkg_dir / filename) as p:
-            return p.read_text(encoding="utf-8")
+        # Try without exam_date subdirectory (legacy structure)
+        ext_dir = self.base_dirs["encoded"] / self.datatype
+        ext_path = find_encoded_file(
+            question_number=self.question_number,
+            datatype=self.datatype,
+            encoded_dir=ext_dir,
+            required=True
+        )
+        return load_text_file(ext_path)
 
     def _load_question(self) -> str:
         """
@@ -175,34 +178,25 @@ class PromptRunner:
         if ext_q:
             return load_text_file(ext_q)
 
-        # Fallback to package data
-        pkg_root = resources.files("llm_music_theory.prompts.questions")
-        pkg_dir = pkg_root / suffix / self.datatype
-        for candidate in pkg_dir.iterdir():
-            if candidate.stem.startswith(self.question_number):
-                return candidate.read_text(encoding="utf-8")
-
-        raise FileNotFoundError(
-            f"Could not find prompt for {self.question_number} in '{pkg_dir}'"
+        # Fallback to direct directory structure (legacy)
+        pkg_dir = self.base_dirs["prompts"] / "questions" / suffix / self.datatype
+        ext_q = find_question_file(
+            question_number=self.question_number,
+            context=self.context,
+            questions_dir=pkg_dir,
+            required=True
         )
+        return load_text_file(ext_q)
 
     def _load_guides(self) -> List[str]:
         """
-        External first (data/guides/*.txt), then fallback to package prompts/guides/*.txt.
+        Load guides from external data directory.
         """
         guides_list: List[str] = []
         ext_dir = self.base_dirs["guides"]
         if self.context and ext_dir.exists():
             for guide_name in list_guides(ext_dir):
                 guides_list.append(load_text_file(ext_dir / f"{guide_name}.txt"))
-            if guides_list:
-                return guides_list
-
-        # Fallback to bundled guides
-        pkg = resources.files("llm_music_theory.prompts.guides")
-        for p in pkg.iterdir():
-            if p.suffix == ".txt":
-                guides_list.append(p.read_text(encoding="utf-8"))
         return guides_list
 
     def _save_response(self, response: str) -> None:
