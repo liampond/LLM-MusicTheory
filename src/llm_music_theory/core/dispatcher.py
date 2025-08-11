@@ -1,25 +1,30 @@
-# src/llm_music_theory/core/dispatcher.py
+"""Model dispatcher with lazy imports.
 
-from llm_music_theory.models.chatgpt  import ChatGPTModel
-from llm_music_theory.models.claude   import ClaudeModel
-from llm_music_theory.models.gemini   import GeminiModel
-from llm_music_theory.models.deepseek import DeepSeekModel
-from llm_music_theory.models.base     import LLMInterface
+Avoid importing third-party SDKs at module import time by importing model
+wrappers only when requested. This keeps test collection lightweight and allows
+running without optional dependencies installed.
+"""
+
+from llm_music_theory.models.base import LLMInterface
 
 def get_llm(model_name: str) -> LLMInterface:
-    """
-    Return an instance of the LLM wrapper class for the given model string.
-    Example: 'chatgpt', 'gemini', 'claude', 'deepseek'
-    """
-    model_name = model_name.lower()
+    """Return an instance of the LLM wrapper class for the given model string.
 
-    if model_name == "chatgpt":
+    Supported values: 'chatgpt', 'gemini', 'claude', 'deepseek'
+    """
+    name = str(model_name).lower()
+
+    if name == "chatgpt":
+        from llm_music_theory.models.chatgpt import ChatGPTModel
         return ChatGPTModel()
-    elif model_name == "gemini":
+    elif name == "gemini":
+        from llm_music_theory.models.gemini import GeminiModel
         return GeminiModel()
-    elif model_name == "claude":
+    elif name == "claude":
+        from llm_music_theory.models.claude import ClaudeModel
         return ClaudeModel()
-    elif model_name == "deepseek":
+    elif name == "deepseek":
+        from llm_music_theory.models.deepseek import DeepSeekModel
         return DeepSeekModel()
     else:
-        raise ValueError(f"Unknown model: {model_name}")
+        raise ValueError(f"Unknown model: {name}")

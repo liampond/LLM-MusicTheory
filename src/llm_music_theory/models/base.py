@@ -16,6 +16,22 @@ class PromptInput:
     model_name: Optional[str] = None   # Override the default model if provided
     max_tokens: Optional[int] = None   # (Optional) token limit for the response
 
+    def __post_init__(self):
+        # Validate required string fields
+        if not isinstance(self.system_prompt, str) or not isinstance(self.user_prompt, str):
+            raise TypeError("system_prompt and user_prompt must be strings")
+
+        # Validate temperature
+        if not isinstance(self.temperature, (int, float)):
+            raise TypeError("temperature must be a number between 0.0 and 1.0")
+        if not (0.0 <= float(self.temperature) <= 1.0):
+            raise ValueError("temperature must be between 0.0 and 1.0")
+
+        # Validate max_tokens if provided
+        if self.max_tokens is not None:
+            if not isinstance(self.max_tokens, int) or self.max_tokens <= 0:
+                raise ValueError("max_tokens must be a positive integer if provided")
+
 
 class LLMInterface(ABC):
     """

@@ -260,31 +260,21 @@ For more information, see the main [README.md](../README.md) or [docs/](../docs/
 
 ## 🔧 Script Details
 
-### run_tests.py
+### Testing (Makefile/pytest)
 
-Comprehensive test runner with multiple execution modes:
+Use Make targets or Poetry + pytest. The Makefile sets mock API keys by default so tests never hit real APIs.
 
-```python
-"""
-Test runner script for LLM-MusicTheory project.
-Runs comprehensive tests without making API calls.
-"""
+Examples:
+```bash
+make test                 # All tests
+make test-fast            # Skip slow tests
+make test-models          # Only model tests
+make cov                  # Coverage report
 
-# Features:
-- Mock API environment setup
-- Parallel test execution
-- Coverage reporting
-- Test categorization
-- Verbose output options
-- CI/CD integration support
+# Or directly
+poetry run pytest -m "not slow"
+poetry run pytest tests/test_models.py
 ```
-
-**Command-line options:**
-- `test_type`: Category of tests to run (default: "all")
-- `--verbose`: Enable detailed output
-- `--coverage`: Generate coverage report
-- `--parallel`: Run tests in parallel
-- `--markers`: Run tests with specific pytest markers
 
 ### setup_dev.py
 
@@ -345,7 +335,7 @@ Ensures all required data is present and properly formatted.
 ### 1. Testing & Quality Assurance
 | Script | Purpose | Usage |
 |--------|---------|--------|
-| `run_tests.py` | Primary test runner | `python run_tests.py [category]` |
+| Makefile | Primary test runner | `make test` / `make test-fast` / `make cov` |
 | `lint_code.py` | Code quality checks | `poetry run python scripts/lint_code.py` |
 | `format_code.py` | Code formatting | `poetry run python scripts/format_code.py` |
 
@@ -409,23 +399,12 @@ def main():
     
     # Your script logic here
     logger.info("Script completed successfully")
-
-if __name__ == "__main__":
-    main()
 ```
 
 ### Best Practices for Scripts
 
-1. **Use Poetry environment**: Always run with `poetry run`
-2. **Include help text**: Add descriptive arguments and help
-3. **Error handling**: Graceful failure with meaningful messages
-4. **Logging**: Use project logger for consistent output
 5. **Documentation**: Clear docstrings and usage examples
 6. **Testing**: Scripts should be testable where possible
-
-### Adding Scripts to Poetry
-
-```toml
 # pyproject.toml
 [tool.poetry.scripts]
 format-code = "scripts.format_code:main"
@@ -439,14 +418,7 @@ setup-dev = "scripts.setup_dev:main"
 
 #### Permission Errors
 ```bash
-# Make scripts executable
-chmod +x scripts/*.py
 
-# Or run through Poetry
-poetry run python scripts/script_name.py
-```
-
-#### Import Errors
 ```bash
 # Ensure you're in the project root
 cd /path/to/LLM-MusicTheory

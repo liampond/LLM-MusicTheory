@@ -43,9 +43,17 @@ class PromptBuilder:
         """
         Combines all elements into a PromptInput for model querying.
         """
+        # Coerce/validate temperature into [0.0, 1.0]
+        temp = self.temperature
+        if not isinstance(temp, (int, float)):
+            raise TypeError("temperature must be a number between 0.0 and 1.0")
+        # clamp
+        if temp < 0.0 or temp > 1.0:
+            raise ValueError("temperature must be between 0.0 and 1.0")
+
         return PromptInput(
             system_prompt=self.system_prompt,
             user_prompt=self.build_user_prompt(),
-            temperature=self.temperature,
+            temperature=float(temp),
             model_name=self.model_name
         )

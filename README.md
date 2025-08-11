@@ -466,10 +466,10 @@ poetry run pytest tests/test_path_utils.py    # File handling tests
 poetry run pytest tests/test_runner.py        # Core logic tests
 poetry run pytest tests/test_integration.py   # CLI integration tests
 
-# Use the test runner script for convenience
-python run_tests.py                           # All tests
-python run_tests.py models                    # Just model tests
-python run_tests.py fast                      # Skip slow tests
+# Quick Make targets
+make test                                     # All tests
+make test-models                              # Just model tests
+make test-fast                                # Skip slow tests
 ```
 
 ### Test Categories
@@ -711,10 +711,10 @@ poetry run python -m llm_music_theory.cli.run_single --question Q1b --datatype m
 # Run all tests - comprehensive coverage, no API calls
 poetry run pytest
 
-# Run specific test categories  
-python run_tests.py models      # Model implementations
-python run_tests.py runner      # Core functionality
-python run_tests.py integration # CLI workflows
+# Run specific test categories (Make targets)
+make test-models      # Model implementations
+make test-runner      # Core functionality
+make test-integration # CLI workflows
 ```
 
 **Results**: 47/56 tests passing with comprehensive coverage of core functionality.
