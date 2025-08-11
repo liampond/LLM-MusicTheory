@@ -2,7 +2,6 @@
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Poetry](https://img.shields.io/badge/dependency_management-poetry-blue.svg)](https://python-poetry.org/)
-[![Tests](https://img.shields.io/badge/tests-47%2F56_passing-green.svg)](#-testing)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-black-black.svg)](https://github.com/psf/black)
 
