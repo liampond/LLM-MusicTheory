@@ -15,6 +15,7 @@ For detailed information, see our comprehensive documentation:
 - **[⚙️ Development Guide](docs/development.md)** - Setup and contribution guidelines
 - **[💡 Examples](docs/examples.md)** - Usage examples and tutorials
 - **[🔧 Scripts](docs/scripts.md)** - Development and automation scriptsomated querying across multiple LLM providers. Includes comprehensive testing suite and support for various music encoding formats.
+ - **[📌 Project Status](STATUS.md)** - Current state and next steps
 
 > **🎯 Built for researchers and developers working on AI music theory applications**
 

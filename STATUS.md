@@ -3,65 +3,115 @@
 Updated: 2025-08-11
 
 ## Overview
-LLM-MusicTheory is a research-oriented toolkit to design, run, and test music theory prompts across multiple LLM providers (OpenAI, Anthropic, Google, DeepSeek). It provides modular prompt composition, provider abstraction, and repeatable experiments via CLI and Python APIs. Tests are hermetic and contract-first.
+LLM-MusicTheory is a research-oriented toolkit to design, run, and test music-theory prompts across multiple LLM providers (OpenAI, Anthropic, Google, DeepSeek). It provides:
+- Modular prompt composition from reusable templates and context guides
+- Provider abstraction for swappable LLM backends
+- CLI and Python APIs for repeatable single/batch experiments
+- Hermetic, contract-first testing (no real API calls)
 
-## Current State
+## Agent onboarding (read this first)
+1. Setup
+  - Use Python 3.11+; install deps with Poetry if available: `poetry install`. If not, use system Python to run tests (Makefile falls back to `python -m pytest`).
+  - Copy `.env.example` to `.env`; keep placeholder keys for testing (tests use mocks).
+2. Run tests quickly
+  - `make test` for all tests, or `make test-fast` to skip slow.
+  - Focused: `make test-models`, `make test-runner`, `make test-integration`, `make test-utils`.
+3. Try the CLI (no costs unless you set real keys and run actual prompts)
+  - Single: `poetry run run-single --model chatgpt --question Q1b --datatype mei --context`
+  - Batch:  `poetry run run-batch --models chatgpt,claude --questions Q1b --datatypes mei`
+4. Guardrails
+  - Do not commit real API keys. Tests must remain hermetic (no network calls).
+  - Respect contract tests; update contracts only when intended public behavior changes.
+
+## Repository map (quick tour)
+- `src/llm_music_theory/core`
+  - `dispatcher.py`: `get_llm(name)` returns provider implementing `LLMInterface`.
+  - `runner.py`: `PromptRunner` builds prompt and queries provider.
+- `src/llm_music_theory/models`
+  - `base.py`: `LLMInterface`, `PromptInput` contracts.
+  - `{chatgpt,claude,gemini,deepseek}.py`: provider implementations.
+- `src/llm_music_theory/prompts`
+  - `prompt_builder.py`: assembles prompts from templates, guides, encoded data, and question text.
+  - `prompts/base/*`, `prompts/questions/*`: prompt resources.
+- `src/llm_music_theory/cli`
+  - `run_single.py`, `run_batch.py`: command-line entrypoints.
+- `src/llm_music_theory/utils`
+  - `path_utils.py`, `logger.py`: file discovery, logging.
+- `tests/`: contract + unit + integration tests with pytest markers.
+- `Makefile`: test shortcuts; exports mock API keys; Poetry fallback.
+- `pytest.ini`: config and markers.
+
+## Contracts and testing
+- Philosophy: contract-first (public behavior) + minimal unit tests for internals.
+- Markers: `unit`, `integration`, `cli`, `contract`, `slow`.
+- Hermetic setup: Makefile exports mock API keys; providers should be mocked/stubbed in tests—no network calls.
+- Useful commands:
+  - `make test` / `make test-fast`
+  - `make test-models` / `make test-runner` / `make test-integration` / `make test-utils`
+  - `make cov` for coverage
+  - Direct: `poetry run pytest -m "not slow"`
+
+## Development workflow (playbook)
+1. Before coding: run `make test-fast` to see baseline green.
+2. Implement changes with types/docs as needed.
+3. Add tests:
+  - Public behavior changes -> contract tests in `tests/` with `@pytest.mark.contract`.
+  - Internal helpers -> unit tests alongside existing suites.
+4. Validate: `make test` (or focused targets) and `make cov` if needed.
+5. Commit with clear message; prefer small, focused commits.
+
+## Current state
 - Architecture
   - Prompt composition via `PromptBuilder`
-  - LLM provider abstraction (`LLMInterface`) and dispatcher (`get_llm`)
+  - Provider abstraction (`LLMInterface`) and dispatcher (`get_llm`)
   - Orchestrated execution via `PromptRunner`
   - CLI commands: `run-single`, `run-batch`
-- Formats supported: MEI, MusicXML, ABC, Humdrum
-- Configuration: `.env` for API keys; defaults in `config/settings.py`
+- Formats: MEI, MusicXML, ABC, Humdrum
+- Config: `.env` for API keys; defaults in `config/settings.py`
 - Testing
   - Pytest markers: unit, integration, cli, contract, slow
-  - Contract-first tests; reduced overlap with unit tests
-  - Hermetic: mock API keys; no real API calls in tests
-  - Makefile targets for common test flows; Poetry fallback to `python -m pytest`
-- Developer Experience
-  - Poetry for packaging and scripts
-  - Updated README and docs/scripts.md
-  - Removed legacy `run_tests.py`; canonical test entry is Makefile/pytest
+  - Contract-first tests, reduced overlap
+  - Hermetic: mock keys; no real API calls
+  - Makefile targets; Poetry fallback
+- DX
+  - Poetry packaging
+  - README/docs/scripts updated
+  - Removed `run_tests.py`; pytest/Make are canonical
 
-## Recent Changes
-- Removed root-level `run_tests.py` (thin wrapper around pytest)
+## Recent changes
+- Removed `run_tests.py` (legacy pytest wrapper)
 - Added `Makefile` with test targets and mock-API env defaults
-- Implemented fallback to `python -m pytest` when Poetry is not installed
-- Updated documentation to use Make targets/pytest instead of the script
-- Pruned duplicate/legacy tests; emphasized contract tests
+- Fallback to `python -m pytest` when Poetry isn’t present
+- README and docs/scripts updated to Make/pytest
+- Reduced duplicate tests; emphasized contract tests
 
-## How to Use
-- Single prompt (CLI):
-  - `poetry run run-single --model chatgpt --question Q1b --datatype mei --context`
-- Batch prompts (CLI):
-  - `poetry run run-batch --models chatgpt,claude --questions Q1b --datatypes mei,abc`
-- Tests:
-  - `make test` (all), `make test-fast` (skip slow), `make test-models` (focused), `make cov` (coverage)
-  - Or directly: `poetry run pytest -m "not slow"`
+## How to use (quick refs)
+- Single prompt (CLI): `poetry run run-single --model chatgpt --question Q1b --datatype mei --context`
+- Batch (CLI): `poetry run run-batch --models chatgpt,claude --questions Q1b --datatypes mei,abc`
+- Tests: `make test`, `make test-fast`, `make test-models`, `make cov`
 
-## Known Gaps / Risks
-- Static test coverage badges and counts can drift; removed to avoid misinformation
-- Some docs still reference example datasets under `data/LLM-RCM/`; ensure data presence for examples (not required for tests)
-- CI status not validated here; ensure CI uses `make test` or `poetry run pytest`
+## Known gaps / risks
+- Coverage badges can drift; removed to avoid misinformation
+- Ensure example data (e.g., `data/LLM-RCM/`) is present for docs/examples; tests don’t require it
+- Confirm CI uses `make test` or `poetry run pytest` with proper caches
 
-## Next Steps
-1. Testing improvements
-   - Expand contract tests for CLI discovery flags and error cases
-   - Add edge-case tests for missing files and invalid parameters
-2. Experiment ergonomics
-   - Optional: add result aggregation/export (CSV/JSON) for `run-batch`
-   - Optional: add experiment configs (YAML/JSON) and a driver script
+## Next steps (prioritized)
+1. Testing
+  - Add contract tests for CLI discovery flags and error cases
+  - Add edge-case tests for invalid params and missing files
+2. Experiments
+  - Optional: batch results aggregation/export (CSV/JSON)
+  - Optional: experiment configs (YAML/JSON) + driver
 3. Tooling
-   - Optional: add lint/type targets (ruff/mypy) to Makefile and CI
-   - Optional: pre-commit hooks for formatting and linting
+  - Optional: lint/type targets (ruff/mypy) in Makefile + CI
+  - Optional: pre-commit hooks
 4. Docs
-   - Add a minimal “Quick Experiments” guide
-   - Ensure docs align with Make-based testing and Poetry fallback
+  - “Quick Experiments” guide; ensure Make/pytest instructions are primary
 5. CI/CD
-   - Verify CI matrix (3.11, 3.12) runs `make test` and caches appropriately
+  - Verify matrix (3.11, 3.12) and caching; run `make test`
 
 ## Verification
-- Local smoke test executed: `make test-utils` passed (18/18)
-- No real API calls during tests (mock API keys exported via Makefile)
+- Local smoke test: `make test-utils` passed (18/18)
+- Tests are hermetic (mock API keys via Makefile)
 
-If you want, I can run the full test suite now and include a short summary here.
+If desired, run the full suite now and append a brief summary here.
