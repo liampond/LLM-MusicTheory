@@ -239,6 +239,36 @@ class TestPromptRunnerBehaviorContract:
                 # Should save the response
                 mock_save.assert_called_once_with("Test response to save")
     
+    def test_run_writes_input_bundle_when_saving(self, tmp_path):
+        """run() SHOULD create a companion .input.json with prompt components when save=True."""
+        mock_model = MockLLM("Bundle response")
+        base_dirs = {"prompts": tmp_path, "encoded": tmp_path, "outputs": tmp_path}
+
+        with patch.object(PromptRunner, '_load_system_prompt', return_value="System"), \
+             patch.object(PromptRunner, '_load_base_format_prompt', return_value="Format"), \
+             patch.object(PromptRunner, '_load_encoded', return_value="EncodedData"), \
+             patch.object(PromptRunner, '_load_question', return_value="QuestionText"), \
+             patch.object(PromptRunner, '_load_guides', return_value=["GuideOne", "GuideTwo"]):
+            runner = PromptRunner(
+                model=mock_model,
+                question_number="Q1b",
+                datatype="abc",
+                context=True,
+                exam_date="test_exam",
+                base_dirs=base_dirs,
+                save=True
+            )
+            runner.run()
+            # Expect input bundle path attribute and file existence
+            assert hasattr(runner, 'input_bundle_path')
+            bundle_path = runner.input_bundle_path
+            assert bundle_path.exists()
+            text = bundle_path.read_text(encoding='utf-8')
+            assert '"file_id": "Q1b"' in text
+            assert '"encoded_data"' in text
+            assert '"guides"' in text
+            assert '"user_prompt_compiled"' in text
+    
     def test_run_logs_execution_info(self, tmp_path):
         """run() SHOULD log execution information."""
         mock_model = MockLLM("Response")
