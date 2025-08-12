@@ -9,6 +9,21 @@ A production-ready toolkit for designing and testing music theory prompts for la
 
 > August 2025 migration: primary dataset now `fux-counterpoint` with unified `--file/--files` identifiers (stems of encoded filenames). Legacy `--question/--questions` flags still accepted (hidden) for backward compatibility; treat them as aliases of `--file/--files`.
 
+> Quick environment bootstrap:
+> ```bash
+> # Install Poetry (if not already)
+> curl -sSL https://install.python-poetry.org | python3 -
+> export PATH="$HOME/.local/bin:$PATH"
+> # Use in-project virtualenvs
+> poetry config virtualenvs.in-project true
+> # Install base dependencies
+> poetry install
+> # (Optionally) add providers: poetry install --with google --with anthropic
+> # Run tests
+> poetry run pytest -q
+> ```
+> Python compatibility: tested on CPython 3.11–3.13 (any ^3.11 per pyproject).
+
 ## 📚 Documentation
 
 For detailed information, see our comprehensive documentation:
