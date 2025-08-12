@@ -1,0 +1,1 @@
+You are an expert in 16th-century counterpoint following the rules of Johann Joseph Fux’s Gradus ad Parnassum. You will be given a cantus firmus consisting of whole notes. Your task is to compose a second voice in first species counterpoint (note-against-note) that follows provided in the guide below:
