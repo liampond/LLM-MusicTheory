@@ -1,6 +1,6 @@
 # Project Status
 
-Updated: 2025-08-11
+Updated: 2025-08-12
 
 ## Overview
 LLM-MusicTheory is a research-oriented toolkit to design, run, and test music-theory prompts across multiple LLM providers (OpenAI, Anthropic, Google, DeepSeek). It provides:
@@ -17,8 +17,9 @@ LLM-MusicTheory is a research-oriented toolkit to design, run, and test music-th
   - `make test` for all tests, or `make test-fast` to skip slow.
   - Focused: `make test-models`, `make test-runner`, `make test-integration`, `make test-utils`.
 3. Try the CLI (no costs unless you set real keys and run actual prompts)
-  - Single: `poetry run run-single --model chatgpt --question Q1b --datatype mei --context`
-  - Batch:  `poetry run run-batch --models chatgpt,claude --questions Q1b --datatypes mei`
+  - Single: `poetry run run-single --model chatgpt --file Q1b --datatype mei --context --dataset fux-counterpoint`
+  - Batch:  `poetry run run-batch --models chatgpt,claude --files Q1b --datatypes mei --dataset fux-counterpoint`
+  - (Legacy aliases still accepted: --question/--questions)
 4. Guardrails
   - Do not commit real API keys. Tests must remain hermetic (no network calls).
   - Respect contract tests; update contracts only when intended public behavior changes.
@@ -79,35 +80,41 @@ LLM-MusicTheory is a research-oriented toolkit to design, run, and test music-th
   - Removed `run_tests.py`; pytest/Make are canonical
 
 ## Recent changes
+- Dataset migration: added unified `fux-counterpoint` layout with `--file/--files` flags
+- Backwards compatibility: hidden aliases `--question/--questions`, `--list-questions`
+- README + CLI docs updated for new dataset abstraction (`--dataset`, `--data-dir`)
 - Removed `run_tests.py` (legacy pytest wrapper)
 - Added `Makefile` with test targets and mock-API env defaults
 - Fallback to `python -m pytest` when Poetry isn’t present
-- README and docs/scripts updated to Make/pytest
 - Reduced duplicate tests; emphasized contract tests
 
 ## How to use (quick refs)
-- Single prompt (CLI): `poetry run run-single --model chatgpt --question Q1b --datatype mei --context`
-- Batch (CLI): `poetry run run-batch --models chatgpt,claude --questions Q1b --datatypes mei,abc`
+- Single prompt (CLI): `poetry run run-single --model chatgpt --file Q1b --datatype mei --context`
+- Batch (CLI): `poetry run run-batch --models chatgpt,claude --files Q1b --datatypes mei,abc`
 - Tests: `make test`, `make test-fast`, `make test-models`, `make cov`
 
 ## Known gaps / risks
+- Need richer examples for new dataset (`fux-counterpoint`) beyond single stub
 - Coverage badges can drift; removed to avoid misinformation
-- Ensure example data (e.g., `data/LLM-RCM/`) is present for docs/examples; tests don’t require it
+- Ensure legacy `LLM-RCM` remains minimal but sufficient for test contracts
 - Confirm CI uses `make test` or `poetry run pytest` with proper caches
 
 ## Next steps (prioritized)
-1. Testing
-  - Add contract tests for CLI discovery flags and error cases
-  - Add edge-case tests for invalid params and missing files
-2. Experiments
+1. Dataset Enhancements
+  - Populate `fux-counterpoint` with additional encoded examples across all datatypes
+  - Add sample `prompt.md` variations or multiple prompt sets
+2. Testing
+  - Add contract tests for new listing flags (`--list-files`, legacy alias)
+  - Edge cases: invalid dataset name, missing base prompt, missing encoded file
+3. Experiments
   - Optional: batch results aggregation/export (CSV/JSON)
   - Optional: experiment configs (YAML/JSON) + driver
-3. Tooling
+4. Tooling
   - Optional: lint/type targets (ruff/mypy) in Makefile + CI
   - Optional: pre-commit hooks
-4. Docs
-  - “Quick Experiments” guide; ensure Make/pytest instructions are primary
-5. CI/CD
+5. Docs
+  - “Quick Experiments” guide; dataset migration rationale section
+6. CI/CD
   - Verify matrix (3.11, 3.12) and caching; run `make test`
 
 ## Verification

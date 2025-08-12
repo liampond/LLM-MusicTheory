@@ -5,7 +5,11 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-black-black.svg)](https://github.com/psf/black)
 
-A production-ready toolkit for designing and testing music theory prompts for large language models (LLMs). Features a modular architecture for composing reusable prompt components## 📚 Documentation
+A production-ready toolkit for designing and testing music theory prompts for large language models (LLMs). Features a modular architecture for composing reusable prompt components.
+
+> August 2025 migration: primary dataset now `fux-counterpoint` with unified `--file/--files` identifiers (stems of encoded filenames). Legacy `--question/--questions` flags still accepted (hidden) for backward compatibility; treat them as aliases of `--file/--files`.
+
+## 📚 Documentation
 
 For detailed information, see our comprehensive documentation:
 
@@ -71,11 +75,13 @@ cp .env.example .env
 # 3. Test installation
 poetry run pytest tests/test_models.py -v
 
-# 4. Run your first prompt
-poetry run run-single --model chatgpt --question Q1b --datatype mei --context
+# 4. Run your first prompt (new flags)
+poetry run run-single --model chatgpt --file Q1b --datatype mei --context --dataset fux-counterpoint
+
+# (Legacy alias still works) --question Q1b
 
 # 5. Run batch processing
-poetry run run-batch --models chatgpt,claude --questions Q1b --datatypes mei,abc
+poetry run run-batch --models chatgpt,claude --files Q1b Q1c --datatypes mei,abc --dataset fux-counterpoint
 ```
 
 **🎉 That's it!** You're ready to start experimenting with music theory prompts.
@@ -116,7 +122,7 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 
 # Verify installation
-poetry run python -c "import llm_music_theory; print('✅ Installation successful!')"
+poetry run run-single --model chatgpt --file Q1b --datatype mei --context --dataset fux-counterpoint
 ```
 
 #### 4. Verify Setup
@@ -130,8 +136,6 @@ If you see tests passing, you're ready to go! 🎉
 
 ## ⚙️ Configurationnstall Poetry (if you don't have it)**
    ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
-   ```
    Or see [Poetry's official installation guide](https://python-poetry.org/docs/main/#installing-with-the-official-installer).
    
    **Alternative installation via pipx (recommended):**
@@ -176,7 +180,7 @@ A modular toolkit for designing and testing music theory prompts for large langu
    ```
 
 6. **Check your Python version**
-   This project requires Python 3.11 or higher. You can check your version with:
+**Results**: Up-to-date tests passing (see STATUS.md for current counts).
    ```bash
    python --version
    ```
@@ -247,12 +251,12 @@ Run one prompt at a time for testing and development:
 
 ```bash
 # Basic usage
-poetry run run-single --model chatgpt --question Q1b --datatype mei --context
+poetry run run-single --model chatgpt --file Q1b --datatype mei --context --dataset fux-counterpoint
 
 # Advanced usage with all parameters
 poetry run run-single \
   --model claude \
-  --question Q1a \
+    --file Q1a \
   --datatype musicxml \
   --context \
   --temperature 0.7 \
@@ -363,37 +367,60 @@ Settings and configurations can be changed in `src/llm_music_theory/config/setti
 
 You can run a single music theory prompt against any supported LLM using the `run_single.py` script. This script combines your modular prompt components, sends the query to the selected API, and prints the model’s response.
 
-**Example command:**
+**Example command (new syntax):**
 ```bash
-poetry run python src/llm_music_theory/cli/run_single.py --model gemini --question Q1b --datatype mei --context
+poetry run run-single --model gemini --file Q1b --datatype mei --context --dataset fux-counterpoint
 ```
 
-### Common Flags
+Legacy still accepted (alias): `--question Q1b`.
 
-- `--model` (required): Which LLM to use. Options: `chatgpt`, `claude`, `gemini`, `deepseek`
-- `--question` (required): The question ID (e.g., `Q1a`, `Q1b`)
-- `--datatype` (required): The encoding format. Options: `mei`, `musicxml`, `abc`, `humdrum`
-- `--context`: Include contextual guides (add this flag for context, omit for no context)
-- `--examdate`: Specify the exam version/folder (default: `August2024`)
-- `--temperature`: Sampling [temperature](https://learnprompting.org/docs/intermediate/configuration_hyperparameters?srsltid=AfmBOoo66sF4m6TbQQHn8HGvoJvoLwaoUITh6xeb2jbSHLC3LzBOcI0Z) (creativity) for the model (default: `0.0`)
-- `--max-tokens`: Maximum tokens for the response (optional)
-- `--save`: Save the model response to the outputs directory
-- `--data-dir`: Path to your data directory (default: `./data/LLM-RCM`)
-- `--outputs-dir`: Path to your outputs directory (default: `./outputs`)
+### Common Flags (updated)
+
+- `--model` (required): LLM provider: `chatgpt`, `claude`, `gemini`, `deepseek`
+- `--file` (required): File ID (stem of encoded file, e.g. `Q1b`)
+- `--datatype` (required): Encoding format: `mei`, `musicxml`, `abc`, `humdrum`
+- `--context`: Include contextual guides
+- `--dataset`: Dataset folder inside `--data-dir` (default: `fux-counterpoint`)
+- `--temperature`: Sampling temperature (default: `0.0`)
+- `--max-tokens`: Optional max tokens
+- `--save`: Persist response under outputs
+- `--data-dir`: Root data directory (default: `./data`)
+- `--outputs-dir`: Output root (default: `./outputs`)
+
+Legacy aliases: `--question` maps to `--file` (hidden), `--examdate` retained for old RCM layout but ignored for new dataset.
 
 ### Listing Available Resources
 
-You can also list available questions, datatypes, or guides:
-- `--list-questions`
+You can list available files (new) plus legacy questions, datatypes, or guides:
+- `--list-files` (preferred)
+- `--list-questions` (legacy alias → same as list-files)
 - `--list-datatypes`
 - `--list-guides`
 
 **Example:**
 ```bash
-poetry run python src/llm_music_theory/cli/run_single.py --list-questions
+poetry run run-single --list-files --dataset fux-counterpoint
 ```
 
 ## 🏗️ Architecture
+
+### Dataset Layout (new)
+
+```
+data/
+    fux-counterpoint/
+        encoded/
+            mei/        # MEI files (Q1b.mei, ...)
+            musicxml/
+            abc/
+            humdrum/
+        prompts/
+            base/       # base_<datatype>.txt templates
+            prompt.md   # unified question text (replaces per-question files)
+        guides/       # optional contextual guide .txt/.md files
+```
+
+Legacy RCM layout (still supported for tests) used: `data/LLM-RCM/encoded/<ExamDate>/<datatype>/<Q>.mei` and per-question prompt files under `prompts/questions/<context|no_context>/<datatype>/Qx.txt`.
 
 ### Project Structure
 
