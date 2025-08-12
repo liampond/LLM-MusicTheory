@@ -22,11 +22,18 @@ requests              = "^2.31.0"
 pyyaml                = "^6.0.1"
 tqdm                  = "^4.66.1"
 python-dotenv         = "^1.0.1"
-google-genai          = "^0.1.0"
+# Keep OpenAI mandatory because tests rely on chatgpt model by default
 openai                = "^1.78.1"
-anthropic             = "^0.50.0"
-deepseek              = "^1.0.0"
-dotenv = "^0.9.9"
+# Make other providers optional so users install only what they need
+google-genai          = { version = "^0.1.0", optional = true }
+anthropic             = { version = "^0.50.0", optional = true }
+deepseek              = { version = "^1.0.0", optional = true }
+
+[tool.poetry.extras]
+anthropic = ["anthropic"]
+google    = ["google-genai"]
+deepseek  = ["deepseek"]
+all       = ["anthropic", "google-genai", "deepseek"]
 
 [tool.poetry.group.dev.dependencies]
 pytest                = "^8.1.1"

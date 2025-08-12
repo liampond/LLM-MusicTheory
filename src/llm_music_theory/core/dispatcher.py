@@ -15,16 +15,32 @@ def get_llm(model_name: str) -> LLMInterface:
     name = str(model_name).lower()
 
     if name == "chatgpt":
+        # OpenAI dependency kept mandatory to satisfy default tests
         from llm_music_theory.models.chatgpt import ChatGPTModel
         return ChatGPTModel()
     elif name == "gemini":
-        from llm_music_theory.models.gemini import GeminiModel
+        try:
+            from llm_music_theory.models.gemini import GeminiModel
+        except ImportError as e:
+            raise RuntimeError(
+                "Google Gemini support not installed. Install extras with: 'poetry install --with google'"
+            ) from e
         return GeminiModel()
     elif name == "claude":
-        from llm_music_theory.models.claude import ClaudeModel
+        try:
+            from llm_music_theory.models.claude import ClaudeModel
+        except ImportError as e:
+            raise RuntimeError(
+                "Anthropic Claude support not installed. Install extras with: 'poetry install --with anthropic'"
+            ) from e
         return ClaudeModel()
     elif name == "deepseek":
-        from llm_music_theory.models.deepseek import DeepSeekModel
+        try:
+            from llm_music_theory.models.deepseek import DeepSeekModel
+        except ImportError as e:
+            raise RuntimeError(
+                "DeepSeek support not installed. Install extras with: 'poetry install --with deepseek'"
+            ) from e
         return DeepSeekModel()
     else:
         raise ValueError(f"Unknown model: {name}")

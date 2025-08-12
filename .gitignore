@@ -4,9 +4,11 @@ __pycache__/
 
 # Environment variables
 .env
+.env.example
 
-# Poetry virtualenv
+# Poetry (legacy) and in-project virtualenvs
 .poetry/
+.venv/
 
 # Editor configs
 .vscode/
@@ -15,6 +17,12 @@ __pycache__/
 
 # Output and data directories
 outputs/
+
+# Test / tooling artifacts
+.coverage
+coverage.xml
+.pytest_cache/
+.mypy_cache/
 
 # Python-related
 *.egg-info/
