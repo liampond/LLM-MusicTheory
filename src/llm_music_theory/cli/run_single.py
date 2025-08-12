@@ -11,9 +11,9 @@ from llm_music_theory.core.dispatcher import get_llm
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.utils.path_utils import (
     find_project_root,
-    list_questions,
+    list_file_ids,
     list_datatypes,
-    list_guides
+    list_guides,
 )
 
 
@@ -46,9 +46,9 @@ def main():
     # --- Listing flags ---
     list_group = parser.add_argument_group("Listing", "List available resources and exit")
     list_group.add_argument(
-        "--list-questions",
+        "--list-files",
         action="store_true",
-        help="List all question IDs (e.g. Q1a, Q1b) and exit"
+        help="List all available file IDs (derived from encoded filenames) and exit"
     )
     list_group.add_argument(
         "--list-datatypes",
@@ -60,6 +60,12 @@ def main():
         action="store_true",
         help="List available guides and exit"
     )
+    # Legacy compatibility: old flag name
+    list_group.add_argument(
+        "--list-questions",
+        action="store_true",
+        help=argparse.SUPPRESS  # hidden legacy alias for listing files/questions
+    )
 
     # --- Run flags ---
     run_group = parser.add_argument_group("Run", "Execute a single prompt")
@@ -69,8 +75,8 @@ def main():
         help="LLM to use"
     )
     run_group.add_argument(
-        "--question",
-        help="Question ID (e.g., Q1a)"
+        "--file",
+        help="File ID (stem of encoded file, e.g., Q1b)"
     )
     run_group.add_argument(
         "--datatype",
@@ -102,8 +108,13 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=Path,
-        default=Path.cwd() / "data" / "LLM-RCM",
-        help="Root folder for encoded/ and prompts/ (default: ./data/LLM-RCM)"
+        default=Path.cwd() / "data",
+        help="Root data directory containing dataset folders (default: ./data)"
+    )
+    parser.add_argument(
+        "--dataset",
+        default="fux-counterpoint",
+        help="Dataset name inside data-dir (default: fux-counterpoint)"
     )
     parser.add_argument(
         "--outputs-dir",
@@ -114,18 +125,18 @@ def main():
 
     args = parser.parse_args()
 
-    # Build base_dirs mapping
+    dataset_root = args.data_dir / args.dataset
     base_dirs = {
-        "encoded":   args.data_dir / "encoded",
-        "prompts":   args.data_dir / "prompts",
-        "questions": args.data_dir / "prompts" / "questions",
-        "guides":    args.data_dir / "prompts" / "guides",
-        "outputs":   args.outputs_dir,
+        "encoded": dataset_root / "encoded",
+        "prompts": dataset_root / "prompts",
+        "questions": dataset_root / "prompts" / "questions",  # legacy
+        "guides": dataset_root / "guides",
+        "outputs": args.outputs_dir,
     }
 
     # Handle early listings
-    if args.list_questions:
-        print("\n".join(list_questions(base_dirs["questions"])))
+    if args.list_files:
+        print("\n".join(list_file_ids(base_dirs["encoded"])))
         sys.exit(0)
     if args.list_datatypes:
         print("\n".join(list_datatypes(base_dirs["encoded"])))
@@ -133,14 +144,17 @@ def main():
     if args.list_guides:
         print("\n".join(list_guides(base_dirs["guides"])))
         sys.exit(0)
+    if getattr(args, "list_questions", False):  # legacy: map to file ids
+        print("\n".join(list_file_ids(base_dirs["encoded"])))
+        sys.exit(0)
     
     # Require these only if not listing
-    if not (args.list_questions or args.list_datatypes or args.list_guides):
+    if not (args.list_files or args.list_datatypes or args.list_guides or getattr(args, "list_questions", False)):
         missing = []
         if not args.model:
             missing.append("--model")
-        if not args.question:
-            missing.append("--question")
+        if not args.file:
+            missing.append("--file")
         if not args.datatype:
             missing.append("--datatype")
         if missing:
@@ -152,19 +166,19 @@ def main():
     # Configure and run the prompt
     runner = PromptRunner(
         model=model,
-        question_number=args.question,
+        file_id=args.file,
         datatype=args.datatype,
         context=args.context,
-        exam_date=args.examdate,
+        dataset=args.dataset,
         base_dirs=base_dirs,
         temperature=args.temperature,
         max_tokens=args.max_tokens,
-        save=args.save
+        save=args.save,
     )
 
     logging.info(
-        f"Running {args.model} on {args.question} "
-        f"Datatype: {args.datatype}, Context: {args.context}]"
+        f"Running {args.model} on file={args.file} dataset={args.dataset} "
+        f"datatype={args.datatype} context={args.context}]"
     )
 
     try:

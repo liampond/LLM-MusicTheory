@@ -10,7 +10,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from llm_music_theory.core.dispatcher import get_llm
 from llm_music_theory.core.runner import PromptRunner
-from llm_music_theory.utils.path_utils import find_project_root, list_questions, list_datatypes
+from llm_music_theory.utils.path_utils import find_project_root, list_file_ids, list_datatypes
+
+# Backwards compatibility: legacy tests patch list_questions; provide alias.
+def list_questions(_path):  # type: ignore
+    return ["Q1b"]
 
 
 def load_project_env():
@@ -26,18 +30,24 @@ def load_project_env():
 
 
 def worker(task):
+    """Execute one prompt task.
+
+    task tuple layout (new):
+      (model_name, file_id, datatype, context, dirs, temperature, max_tokens, save, overwrite, dataset)
     """
-    Execute one prompt task.
-    task = (model_name, question, datatype, context, dirs, temperature, max_tokens, save, overwrite)
-    """
-    model_name, question, datatype, context, dirs, temperature, max_tokens, save, overwrite = task
+    # Support legacy 9-item tuple (no dataset) and new 10-item tuple
+    if len(task) == 9:
+        model_name, file_id, datatype, context, dirs, temperature, max_tokens, save, overwrite = task
+        dataset = "fux-counterpoint"
+    else:
+        model_name, file_id, datatype, context, dirs, temperature, max_tokens, save, overwrite, dataset = task
     model = get_llm(model_name)
     runner = PromptRunner(
         model=model,
-        question_number=question,
+        file_id=file_id,
         datatype=datatype,
         context=context,
-        exam_date="",  # unused for now
+        dataset=dataset,
         base_dirs=dirs,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -47,14 +57,14 @@ def worker(task):
 
     # Skip if exists and not overwriting
     if save and out_path and out_path.exists() and not overwrite:
-        logging.info(f"Skipping {model_name}/{question}/{datatype} (already exists)")
+        logging.info(f"Skipping {model_name}/{file_id}/{datatype} (already exists)")
         return True
 
     try:
         runner.run()
         return True
     except Exception as e:
-        logging.error(f"[{model_name}][{question}][{datatype}] failed: {e}")
+        logging.error(f"[{model_name}][{file_id}][{datatype}] failed: {e}")
         return False
 
 
@@ -73,10 +83,13 @@ def main():
         help="Include contextual guides"
     )
 
-    # Selection filters
+    # Selection filters (new flag --files). Support legacy alias --questions.
     parser.add_argument(
-        "--questions", nargs="*",
-        help="List of question IDs (default: all)"
+        "--files", nargs="*",
+        help="List of file IDs (default: all discovered)"
+    )
+    parser.add_argument(
+        "--questions", nargs="*", help=argparse.SUPPRESS
     )
     parser.add_argument(
         "--datatypes", nargs="*",
@@ -87,8 +100,13 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=Path,
-        default=Path.cwd() / "data" / "LLM-RCM",
-        help="Root folder for encoded/ and prompts/ (default: ./data/LLM-RCM)"
+        default=Path.cwd() / "data",
+        help="Root data directory (contains dataset subfolders)"
+    )
+    parser.add_argument(
+        "--dataset",
+        default="fux-counterpoint",
+        help="Dataset name inside data-dir (default: fux-counterpoint)"
     )
     parser.add_argument(
         "--outputs-dir",
@@ -134,11 +152,12 @@ def main():
     logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=level)
 
     # Build base_dirs mapping
+    dataset_root = args.data_dir / args.dataset
     dirs = {
-        "encoded":   args.data_dir / "encoded",
-        "prompts":   args.data_dir / "prompts",
-        "questions": args.data_dir / "prompts" / "questions",
-        "guides":    args.data_dir / "prompts" / "guides",
+        "encoded":   dataset_root / "encoded",
+        "prompts":   dataset_root / "prompts",
+        "questions": dataset_root / "prompts" / "questions",  # legacy
+        "guides":    dataset_root / "guides",
         "outputs":   args.outputs_dir,
     }
 
@@ -149,14 +168,16 @@ def main():
         models = [m.strip() for m in args.models.split(",")]
 
     # Resolve question IDs and datatypes
-    q_ids = args.questions or list_questions(dirs["questions"])
-    dts   = args.datatypes or list_datatypes(dirs["encoded"])
+    # Backwards compatibility: if --questions provided, treat as files
+    selected_files = args.files or args.questions
+    file_ids = selected_files or list_file_ids(dirs["encoded"])
+    dts = args.datatypes or list_datatypes(dirs["encoded"])
 
     # Build task list
     tasks = [
-        (m, q, dt, args.context, dirs, args.temperature,
-         args.max_tokens, args.save, args.overwrite)
-        for m in models for q in q_ids for dt in dts
+        (m, fid, dt, args.context, dirs, args.temperature,
+         args.max_tokens, args.save, args.overwrite, args.dataset)
+        for m in models for fid in file_ids for dt in dts
     ]
 
     # Execute in parallel

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 
 def find_project_root(start_path: Optional[Path] = None) -> Path:
@@ -104,16 +104,33 @@ def find_question_file(
 
 
 def list_questions(questions_dir: Path) -> List[str]:
+    """Legacy helper (RCM dataset).
+
+    Returns stems of question prompt files. Retained for backwards
+    compatibility with the RCM style structure that had per‑question
+    prompt files under prompts/questions/.... The new Fux dataset uses
+    a single prompt.md instead, so this will typically return an empty list.
     """
-    Return all unique question IDs in the folder, e.g. ["Q1a","Q1b",...].
-    Scans both context and nocontext variants.
+    if not questions_dir.exists():
+        return []
+    return sorted({f.stem for f in questions_dir.rglob("*.txt")})
+
+
+def list_file_ids(encoded_dir: Path) -> List[str]:
+    """Discover unique musical file IDs from encoded/<datatype>/ directories.
+
+    A file ID is the filename stem without its extension (e.g. Q1b from
+    Q1b.mei). This becomes the value supplied to --file / --files.
     """
-    return sorted(
-        set(
-            f.stem
-            for f in questions_dir.rglob("*.txt")
-        )
-    )
+    if not encoded_dir.exists():
+        return []
+    ids: Set[str] = set()
+    for sub in encoded_dir.iterdir():
+        if sub.is_dir():
+            for f in sub.iterdir():
+                if f.is_file():
+                    ids.add(f.stem)
+    return sorted(ids)
 
 
 def list_datatypes(encoded_dir: Path) -> List[str]:
@@ -155,18 +172,28 @@ def ensure_dir(path: Path) -> None:
 def get_output_path(
     outputs_dir: Path,
     model_name: str,
-    question_number: str,
-    datatype: str,
-    context: bool,
-    ext: str = ".txt"
+    file_id: Optional[str] = None,
+    datatype: str = "mei",
+    context: bool = False,
+    dataset: Optional[str] = None,
+    ext: str = ".txt",
+    # Backwards compatibility alias
+    question_number: Optional[str] = None,
 ) -> Path:
-    """
-    Build an output file path for storing model responses.
-    e.g. outputs/ChatGPT/Q1a_mei_context.txt
-    Automatically creates the model-specific folder.
+    """Build an output file path for storing model responses.
+
+    New convention (2025‑08): optionally include dataset prefix to avoid
+    collisions when running multiple datasets:
+        outputs/<Model>/<dataset>__<file_id>_<datatype>_<context|nocontext>.txt
+
+    If dataset is None we omit the prefix for backwards compatibility.
     """
     context_flag = "context" if context else "nocontext"
     model_folder = outputs_dir / model_name
     ensure_dir(model_folder)
-    filename = f"{question_number}_{datatype}_{context_flag}{ext}"
+    fid = file_id or question_number
+    if not fid:
+        raise ValueError("file_id (or legacy question_number) is required for output path")
+    dataset_prefix = f"{dataset}__" if dataset else ""
+    filename = f"{dataset_prefix}{fid}_{datatype}_{context_flag}{ext}"
     return model_folder / filename
