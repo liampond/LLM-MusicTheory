@@ -10,10 +10,10 @@ packages = [
   { include = "llm_music_theory", from = "src" }
 ]
 
-# Include your sample data in the published package
+# Include legacy sample data (RCM6, formerly LLM-RCM) if present. Primary dataset is fux-counterpoint.
 include = [
-  "data/LLM-RCM/encoded/**",   # sample music files
-  "data/LLM-RCM/prompts/**"    # prompt templates and questions
+  "data/RCM6/encoded/**",    # legacy sample music files
+  "data/RCM6/prompts/**"     # legacy prompt templates and questions
 ]
 
 [tool.poetry.dependencies]

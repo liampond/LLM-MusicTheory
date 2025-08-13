@@ -435,7 +435,7 @@ data/
         guides/       # optional contextual guide .txt/.md files
 ```
 
-Legacy RCM layout (still supported for tests) used: `data/LLM-RCM/encoded/<ExamDate>/<datatype>/<Q>.mei` and per-question prompt files under `prompts/questions/<context|no_context>/<datatype>/Qx.txt`.
+Legacy RCM layout (now renamed `RCM6`, still minimally supported for tests) used: `data/RCM6/encoded/<ExamDate>/<datatype>/<Q>.mei` and per-question prompt files under `prompts/questions/<context|no_context>/<datatype>/Qx.txt`.
 
 ### Project Structure
 
@@ -461,7 +461,7 @@ LLM-MusicTheory/
 │   └── utils/                      # Utility functions
 │       ├── logger.py              # Logging configuration
 │       └── path_utils.py          # File and path utilities
-├── data/LLM-RCM/                   # Legacy data (read-only)
+├── data/RCM6/                      # Legacy data (read-only, formerly LLM-RCM)
 │   ├── encoded/                    # Music files in various formats
 │   ├── prompts/                    # Base prompt templates
 │   ├── guides/                     # Context guides for prompts
@@ -669,7 +669,7 @@ OPENAI_API_KEY=your-key-here
 **3. FileNotFoundError for data files**
 ```bash
 # Solution: Check data directory structure
-ls -la data/LLM-RCM/
+ls -la data/RCM6/
 # Should contain: encoded/, prompts/, guides/, questions/
 ```
 
@@ -772,7 +772,7 @@ LLM-MusicTheory/
 │   ├── models/                  # LLM model wrappers
 │   ├── prompts/                 # Prompt building utilities  
 │   └── utils/                   # Utility functions
-├── data/LLM-RCM/               # Legacy evaluation data
+├── data/RCM6/                  # Legacy evaluation data (formerly LLM-RCM)
 │   ├── encoded/                # Music files (MEI, MusicXML, etc.)
 │   ├── prompts/                # Prompt templates
 │   └── guides/                 # Context guides

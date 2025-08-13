@@ -91,7 +91,7 @@ The LLM-MusicTheory package is designed as a modular evaluation framework for te
 - Error handling
 - System utilities
 
-### 6. Data Layer (`data/LLM-RCM/`)
+### 6. Data Layer (`data/RCM6/` – legacy, formerly LLM-RCM)
 
 **Purpose**: Static evaluation data
 

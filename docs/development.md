@@ -199,7 +199,7 @@ def test_new_model_query():
 
 ### Adding New Music Formats
 
-1. **Add base prompt** in `data/LLM-RCM/prompts/base/base_newformat.txt`
+1. **Add base prompt** in `data/RCM6/prompts/base/base_newformat.txt` (legacy dataset) or preferably add to a new modern dataset like `fux-counterpoint`.
 
 2. **Update path utilities** to recognize the format:
 
@@ -214,7 +214,7 @@ ext_map = {
 }
 ```
 
-3. **Add sample data** in `data/LLM-RCM/encoded/newformat/`
+3. **Add sample data** in `data/RCM6/encoded/newformat/` (only if needed for backwards compatibility tests)
 
 4. **Add tests** for the new format
 
@@ -246,7 +246,7 @@ tests/                          # Test suite
 ├── test_path_utils.py          # Utility tests
 └── ...
 
-data/LLM-RCM/                   # Evaluation data
+data/RCM6/                      # Legacy evaluation data (formerly LLM-RCM)
 ├── encoded/                    # Music files
 ├── prompts/                    # Prompt templates
 ├── questions/                  # Question specifications

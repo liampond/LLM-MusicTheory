@@ -96,7 +96,7 @@ LLM-MusicTheory is a research-oriented toolkit to design, run, and test music-th
 ## Known gaps / risks
 - Need richer examples for new dataset (`fux-counterpoint`) beyond single stub
 - Coverage badges can drift; removed to avoid misinformation
-- Ensure legacy `LLM-RCM` remains minimal but sufficient for test contracts
+- Ensure legacy `RCM6` (formerly LLM-RCM) remains minimal but sufficient for test contracts
 - Confirm CI uses `make test` or `poetry run pytest` with proper caches
 
 ## Next steps (prioritized)

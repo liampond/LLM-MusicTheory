@@ -103,6 +103,25 @@ class PromptRunner:
             "guides": guides,
             "question_prompt": question_text,
         }
+        # Dataset-specific ordering logic. For the new fux-counterpoint dataset
+        # the user requested ordering: prompt.md (question), guides, base_<FORMAT>, encoded file.
+        # Legacy datasets retain previous ordering.
+        ordering = None
+        section_headers = None
+        if self.dataset == "fux-counterpoint":
+            ordering = [
+                "question_prompt",   # prompt.md baseline instructions
+                "guides",            # contextual guide(s)
+                "format_prompt",     # base_format instructions
+                "encoded_data",      # the score / encoded file
+            ]
+            section_headers = {
+                "question_prompt": "Task",
+                "guides": "Guide",
+                "format_prompt": f"Output Format ({self.datatype.upper()})",
+                "encoded_data": f"Encoded {self.datatype.upper()} Source",
+            }
+
         builder = PromptBuilder(
             system_prompt=system_prompt,
             format_specific_user_prompt=format_prompt,
@@ -111,6 +130,8 @@ class PromptRunner:
             question_prompt=question_text,
             temperature=self.temperature,
             model_name=None,
+            ordering=ordering,
+            section_headers=section_headers,
         )
         prompt_input = builder.build()
         if self.max_tokens is not None:

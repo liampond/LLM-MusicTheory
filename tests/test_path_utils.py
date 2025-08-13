@@ -192,77 +192,59 @@ class TestDataIntegrity:
     """Test data file integrity and structure."""
 
     def test_data_directory_exists(self):
-        """Test that data directory exists in the project."""
+        """Test that fux-counterpoint dataset directory exists in the project."""
         root = find_project_root()
-        data_dir = root / "data" / "LLM-RCM"
-        assert data_dir.exists()
+        data_dir = root / "data" / "fux-counterpoint"
+        assert data_dir.exists(), "fux-counterpoint dataset missing"
         assert data_dir.is_dir()
 
     def test_required_subdirectories_exist(self):
-        """Test that required subdirectories exist."""
+        """Test that core subdirectories exist for fux-counterpoint."""
         root = find_project_root()
-        data_dir = root / "data" / "LLM-RCM"
-        
-        required_dirs = ["encoded", "prompts"]
-        for dir_name in required_dirs:
-            dir_path = data_dir / dir_name
-            assert dir_path.exists(), f"Missing required directory: {dir_name}"
-            assert dir_path.is_dir()
+        data_dir = root / "data" / "fux-counterpoint"
+        required_dirs = ["encoded", "prompts", "guides"]
+        for name in required_dirs:
+            d = data_dir / name
+            assert d.exists(), f"Missing required directory: {name}"
+            assert d.is_dir()
 
     def test_base_prompts_exist(self):
-        """Test that base prompt files exist."""
+        """Test that available base prompt files exist for supported types."""
         root = find_project_root()
-        base_dir = root / "data" / "LLM-RCM" / "prompts" / "base"
-        
-        required_files = [
-            "base_mei.txt",
-            "base_abc.txt",
-            "base_musicxml.txt",
-            "base_humdrum.txt"
-        ]
-        
-        for file_name in required_files:
-            file_path = base_dir / file_name
-            assert file_path.exists(), f"Missing required file: {file_name}"
-            assert file_path.is_file()
-            assert file_path.stat().st_size > 0, f"Empty file: {file_name}"
+        base_dir = root / "data" / "fux-counterpoint" / "prompts" / "base"
+        assert base_dir.exists()
+        # Only mei & musicxml currently required
+        for stem in ["base_mei", "base_musicxml"]:
+            md_file = base_dir / f"{stem}.md"
+            assert md_file.exists(), f"Missing required file: {md_file.name}"
+            assert md_file.stat().st_size > 0
 
     def test_sample_encoded_files_exist(self):
-        """Test that some sample encoded files exist."""
+        """Test that encoded mei & musicxml files exist in fux dataset."""
         root = find_project_root()
-        encoded_dir = root / "data" / "LLM-RCM" / "encoded"
-        
-        # Check if there are any datatype directories (abc, mei, etc.)
-        datatype_dirs = [d for d in encoded_dir.iterdir() if d.is_dir()]
-        assert len(datatype_dirs) > 0, "No datatype directories found"
-        
-        # Check if at least one datatype has encoded files
-        found_files = False
-        for datatype_dir in datatype_dirs:
-            files = list(datatype_dir.glob("*"))
-            if files:
-                found_files = True
-                break
-        
-        assert found_files, "No encoded music files found"
+        encoded_dir = root / "data" / "fux-counterpoint" / "encoded"
+        assert encoded_dir.exists()
+        for sub in ["mei", "musicxml"]:
+            d = encoded_dir / sub
+            assert d.exists(), f"Missing encoded/{sub} directory"
+            files = list(d.glob(f"*.{sub if sub!='musicxml' else 'musicxml'}"))
+            assert files, f"No {sub} files found"
 
     def test_file_naming_conventions(self):
-        """Test that files follow expected naming conventions."""
+        """Basic naming checks for supported datatypes in fux dataset."""
         root = find_project_root()
-        encoded_dir = root / "data" / "LLM-RCM" / "encoded"
-        
+        encoded_dir = root / "data" / "fux-counterpoint" / "encoded"
+        if not encoded_dir.exists():
+            pytest.skip("fux-counterpoint encoded directory missing")
         for datatype_dir in encoded_dir.iterdir():
             if not datatype_dir.is_dir():
                 continue
-                
+            if datatype_dir.name not in {"mei", "musicxml"}:
+                continue
             for file_path in datatype_dir.iterdir():
-                if file_path.is_file():
-                        # Check that files have expected extensions
-                        if datatype_dir.name == "mei":
-                            assert file_path.suffix == ".mei"
-                        elif datatype_dir.name == "abc":
-                            assert file_path.suffix == ".abc"
-                        elif datatype_dir.name == "humdrum":
-                            assert file_path.suffix == ".krn"
-                        elif datatype_dir.name == "musicxml":
-                            assert file_path.suffix == ".musicxml"
+                if not file_path.is_file():
+                    continue
+                if datatype_dir.name == "mei":
+                    assert file_path.suffix == ".mei"
+                elif datatype_dir.name == "musicxml":
+                    assert file_path.suffix == ".musicxml"

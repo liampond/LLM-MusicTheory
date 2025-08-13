@@ -331,10 +331,10 @@ from llm_music_theory.utils.path_utils import find_project_root
 model = ChatGPT()
 root = find_project_root()
 base_dirs = {
-    "encoded": root / "data" / "LLM-RCM" / "encoded",
-    "prompts": root / "data" / "LLM-RCM" / "prompts",
-    "questions": root / "data" / "LLM-RCM" / "prompts",
-    "guides": root / "data" / "LLM-RCM" / "guides",
+    "encoded": root / "data" / "RCM6" / "encoded",      # legacy dataset (formerly LLM-RCM)
+    "prompts": root / "data" / "RCM6" / "prompts",
+    "questions": root / "data" / "RCM6" / "prompts",
+    "guides": root / "data" / "RCM6" / "guides",
     "outputs": root / "outputs"
 }
 

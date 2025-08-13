@@ -42,21 +42,19 @@ class TestComprehensivePromptGeneration:
     def project_structure(self):
         """Get real project structure for testing."""
         root = find_project_root()
-        data_dir = root / "data" / "LLM-RCM"
-        
+        data_dir = root / "data" / "fux-counterpoint"
+
         if not data_dir.exists():
             pytest.skip("Data directory not found")
-        
-        # Check if system prompt exists - if not, skip tests that need it
+
         system_prompt_path = data_dir / "prompts" / "base" / "system_prompt.txt"
         has_system_prompt = system_prompt_path.exists()
-        
-        # Get available exam dates
+
         encoded_dir = data_dir / "encoded"
         exam_dates = []
         if encoded_dir.exists():
             exam_dates = [d.name for d in encoded_dir.iterdir() if d.is_dir()]
-        
+
         return {
             'root': root,
             'data_dir': data_dir,
@@ -173,7 +171,7 @@ class TestComprehensivePromptGeneration:
                 question_number=question,
                 datatype=datatype,
                 context=True,  # Test with context first
-                exam_date=exam_date,
+                exam_date="",
                 base_dirs=base_dirs,
                 temperature=0.3,
                 max_tokens=500,

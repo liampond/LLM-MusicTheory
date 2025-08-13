@@ -58,14 +58,14 @@ def temp_project_structure():
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        
+
         # Create main project structure
         src_dir = temp_path / "src" / "llm_music_theory"
         src_dir.mkdir(parents=True)
-        
-        data_dir = temp_path / "data" / "LLM-RCM"
+
+        data_dir = temp_path / "data" / "RCM6"  # legacy dataset name (formerly LLM-RCM)
         data_dir.mkdir(parents=True)
-        
+
         # Create encoded music files
         encoded_dir = data_dir / "encoded"
         for datatype in ["mei", "musicxml", "abc", "humdrum"]:
