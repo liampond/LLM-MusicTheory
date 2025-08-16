@@ -23,6 +23,7 @@ outputs/
 coverage.xml
 .pytest_cache/
 .mypy_cache/
+htmlcov/
 
 # Python-related
 *.egg-info/
@@ -31,4 +32,3 @@ coverage.xml
 
 # macOS
 .DS_Store
-.env.example
