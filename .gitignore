@@ -1,34 +1,79 @@
-# Bytecode and cache
+########################################
+# Bytecode / caches
+########################################
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*.pyo
+.python-version
 
-# Environment variables
+########################################
+# Environments / tooling
+########################################
+
+# Local env files (keep .env.example tracked if added later)
 .env
-.env.example
+.env.local
+.env.*.local
 
-# Poetry (legacy) and in-project virtualenvs
+# Poetry / virtual envs
 .poetry/
 .venv/
+venv/
 
-# Editor configs
+########################################
+# Editors / IDE
+########################################
+
 .vscode/
 .idea/
 *.swp
-
-# Output and data directories
-outputs/
-
-# Test / tooling artifacts
-.coverage
-coverage.xml
-.pytest_cache/
+.ropeproject/
+.ruff_cache/
 .mypy_cache/
-htmlcov/
+.pytest_cache/
+.ipynb_checkpoints/
 
-# Python-related
+########################################
+# Build / distribution / packaging
+########################################
+build/
+dist/
 *.egg-info/
 *.egg
+*.whl
+pip-wheel-metadata/
+
+########################################
+# Project runtime outputs
+########################################
+outputs/
+logs/
 *.log
 
-# macOS
+########################################
+# Coverage / test artifacts
+########################################
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+/.cache/
+
+########################################
+# Misc / OS
+########################################
 .DS_Store
+Thumbs.db
+*.bak
+*.tmp
+*.orig
+
+########################################
+# Security (ensure not committed if created locally)
+########################################
+*.pem
+*.key
+*.crt
+
+# End of file
