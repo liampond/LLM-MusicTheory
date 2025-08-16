@@ -1,214 +1,346 @@
 #!/usr/bin/env python3
-# cli/run_batch.py
+"""Batch CLI for running multiple prompt combinations efficiently.
+
+Goals:
+  * Parse arguments & expand cartesian product of (models × files × datatypes).
+  * Provide parallel execution with basic retry handling.
+  * Validate dataset structure & API keys early.
+
+Non‑goals:
+  * Prompt construction logic (delegated to `PromptRunner`).
+  * Complex scheduling / rate limiting (future enhancement).
+"""
+
+from __future__ import annotations
 
 import argparse
 import logging
 import sys
+import os
 from pathlib import Path
+from dataclasses import dataclass
+from typing import Iterable, List, Dict, Sequence, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+from time import sleep
 from dotenv import load_dotenv
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from llm_music_theory.core.dispatcher import get_llm
 from llm_music_theory.core.runner import PromptRunner
-from llm_music_theory.utils.path_utils import find_project_root, list_file_ids, list_datatypes
+from llm_music_theory.utils.path_utils import (
+    find_project_root,
+    list_file_ids,
+    list_datatypes,
+)
 
-# Backwards compatibility: legacy tests patch list_questions; provide alias.
+# Legacy compatibility: tests may patch this symbol.
 def list_questions(_path):  # type: ignore
     return ["Q1b"]
 
 
-def load_project_env():
-    """
-    Load environment variables from the .env at the project root.
-    """
+MODEL_ENV_VARS: Dict[str, str] = {
+    "chatgpt": "OPENAI_API_KEY",
+    "claude": "ANTHROPIC_API_KEY",
+    "gemini": "GOOGLE_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+}
+
+
+def load_project_env() -> None:
     root = find_project_root()
     dotenv_path = root / ".env"
     if dotenv_path.exists():
-        load_dotenv(dotenv_path=dotenv_path)
+        load_dotenv(dotenv_path=dotenv_path, override=False)
     else:
-        logging.warning(f"No .env found at {dotenv_path}; relying on existing environment")
+        logging.debug("No .env file found; proceeding with existing environment.")
 
 
-def worker(task):
-    """Execute one prompt task.
+def parse_csv_or_list(values: Optional[Sequence[str]]) -> Optional[List[str]]:
+    """Split a list of possibly comma-delimited strings into a flat list.
 
-    task tuple layout (new):
-      (model_name, file_id, datatype, context, dirs, temperature, max_tokens, save, overwrite, dataset)
+    Example: ["Q1a,Q1b", "Q1c"] -> ["Q1a", "Q1b", "Q1c"]
     """
-    # Support legacy 9-item tuple (no dataset) and new 10-item tuple
-    if len(task) == 9:
-        model_name, file_id, datatype, context, dirs, temperature, max_tokens, save, overwrite = task
-        dataset = "fux-counterpoint"
-    else:
-        model_name, file_id, datatype, context, dirs, temperature, max_tokens, save, overwrite, dataset = task
-    model = get_llm(model_name)
-    runner = PromptRunner(
-        model=model,
-        file_id=file_id,
-        datatype=datatype,
-        context=context,
-        dataset=dataset,
-        base_dirs=dirs,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        save=save,
-    )
-    out_path = runner.save_to
-
-    # Skip if exists and not overwriting
-    if save and out_path and out_path.exists() and not overwrite:
-        logging.info(f"Skipping {model_name}/{file_id}/{datatype} (already exists)")
-        return True
-
-    try:
-        runner.run()
-        return True
-    except Exception as e:
-        logging.error(f"[{model_name}][{file_id}][{datatype}] failed: {e}")
-        return False
+    if not values:
+        return None
+    out: List[str] = []
+    for v in values:
+        out.extend([p.strip() for p in v.split(",") if p.strip()])
+    return out or None
 
 
-def main():
-    # Load .env and configure logging
-    load_project_env()
+def validate_api_keys(models: Iterable[str]) -> None:
+    for m in set(models):
+        env_var = MODEL_ENV_VARS.get(m)
+        if not env_var:
+            continue
+        api_key = os.getenv(env_var)
+        if not api_key or "your_" in api_key.lower():
+            logging.error(
+                "Required key %s missing or placeholder. Add it to your .env to use model '%s'.",
+                env_var,
+                m,
+            )
+            raise SystemExit(2)
+
+
+@dataclass(frozen=True)
+class Task:
+    model_name: str
+    file_id: str
+    datatype: str
+    context: bool
+    temperature: float
+    max_tokens: Optional[int]
+    save: bool
+    overwrite: bool
+    dataset: str
+
+
+def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("Batch-run music-theory prompts")
-
-    # Models & context
     parser.add_argument(
-        "--models", required=True,
-        help="Comma-separated models (e.g. chatgpt,claude) or 'all'"
+        "--models",
+        required=True,
+        help="Comma-separated models (e.g. chatgpt,claude) or 'all'",
     )
     parser.add_argument(
-        "--context", action="store_true",
-        help="Include contextual guides"
-    )
-
-    # Selection filters (new flag --files). Support legacy alias --questions.
-    parser.add_argument(
-        "--files", nargs="*",
-        help="List of file IDs (default: all discovered)"
+        "--context",
+        action="store_true",
+        help="Include contextual guides",
     )
     parser.add_argument(
-        "--questions", nargs="*", help=argparse.SUPPRESS
+        "--files",
+        nargs="*",
+        help="List of file IDs (default: all discovered)",
     )
+    parser.add_argument("--questions", nargs="*", help=argparse.SUPPRESS)
     parser.add_argument(
-        "--datatypes", nargs="*",
-        help="List of formats (default: all)"
+        "--datatypes",
+        nargs="*",
+        help="List of formats (default: all)",
     )
-
-    # Data & output directories
     parser.add_argument(
         "--data-dir",
         type=Path,
         default=Path.cwd() / "data",
-        help="Root data directory (contains dataset subfolders)"
+        help="Root data directory (contains dataset subfolders)",
     )
     parser.add_argument(
         "--dataset",
         default="fux-counterpoint",
-        help="Dataset name inside data-dir (default: fux-counterpoint)"
+        help="Dataset name inside data-dir (default: fux-counterpoint)",
     )
     parser.add_argument(
         "--outputs-dir",
         type=Path,
         default=Path.cwd() / "outputs",
-        help="Where to save model responses (default: ./outputs)"
-    )
-
-    # Run parameters
-    parser.add_argument(
-        "--temperature", type=float, default=0.0,
-        help="Sampling temperature"
+        help="Where to save model responses (default: ./outputs)",
     )
     parser.add_argument(
-        "--max-tokens", type=int, default=None,
-        help="Optional token cap"
+        "--temperature",
+        type=float,
+        default=0.0,
+        help="Sampling temperature",
     )
     parser.add_argument(
-        "--save", action="store_true",
-        help="Save outputs to disk"
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Optional token cap",
     )
     parser.add_argument(
-        "--overwrite", action="store_true",
-        help="Overwrite existing outputs"
+        "--save",
+        action="store_true",
+        help="Save outputs to disk",
     )
     parser.add_argument(
-        "--retry", type=int, default=0,
-        help="Number of retries for failed runs"
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing outputs",
     )
     parser.add_argument(
-        "--jobs", type=int, default=1,
-        help="Number of parallel jobs"
+        "--retry",
+        type=int,
+        default=0,
+        help="Number of retries for failed runs",
     )
     parser.add_argument(
-        "--verbose", action="store_true",
-        help="Enable debug logging"
+        "--jobs",
+        type=int,
+        default=1,
+        help="Number of parallel jobs",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable debug logging",
+    )
+    return parser
 
-    args = parser.parse_args()
 
-    # Configure logging level
-    level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=level)
+def expand_models(raw: str) -> List[str]:
+    if raw.lower() == "all":
+        return ["chatgpt", "claude", "gemini", "deepseek"]
+    return [m.strip() for m in raw.split(",") if m.strip()]
 
-    # Build base_dirs mapping
-    dataset_root = args.data_dir / args.dataset
-    dirs = {
-        "encoded":   dataset_root / "encoded",
-        "prompts":   dataset_root / "prompts",
-        "questions": dataset_root / "prompts" / "questions",  # legacy
-        "guides":    dataset_root / "guides",
-        "outputs":   args.outputs_dir,
-    }
 
-    # Resolve models list
-    if args.models.lower() == "all":
-        models = ["chatgpt", "claude", "gemini", "deepseek"]
-    else:
-        models = [m.strip() for m in args.models.split(",")]
-
-    # Resolve question IDs and datatypes
-    # Backwards compatibility: if --questions provided, treat as files
-    selected_files = args.files or args.questions
-    file_ids = selected_files or list_file_ids(dirs["encoded"])
-    dts = args.datatypes or list_datatypes(dirs["encoded"])
-
-    # Build task list
-    tasks = [
-        (m, fid, dt, args.context, dirs, args.temperature,
-         args.max_tokens, args.save, args.overwrite, args.dataset)
-        for m in models for fid in file_ids for dt in dts
+def prepare_tasks(
+    models: Sequence[str],
+    file_ids: Sequence[str],
+    datatypes: Sequence[str],
+    args: argparse.Namespace,
+) -> List[Task]:
+    return [
+        Task(
+            model_name=m,
+            file_id=fid,
+            datatype=dt,
+            context=args.context,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+            save=args.save,
+            overwrite=args.overwrite,
+            dataset=args.dataset,
+        )
+        for m in models
+        for fid in file_ids
+        for dt in datatypes
     ]
 
-    # Execute in parallel
-    failures = []
-    with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        future_map = {pool.submit(worker, t): t for t in tasks}
+
+def run_task(task: Task, base_dirs: Dict[str, Path]) -> bool:
+    runner = PromptRunner(
+        model=get_llm(task.model_name),
+        file_id=task.file_id,
+        datatype=task.datatype,
+        context=task.context,
+        dataset=task.dataset,
+        base_dirs=base_dirs,
+        temperature=task.temperature,
+        max_tokens=task.max_tokens,
+        save=task.save,
+    )
+    out_path = runner.save_to
+    if task.save and out_path and out_path.exists() and not task.overwrite:
+        logging.info(
+            "Skipping %s/%s/%s (already exists)",
+            task.model_name,
+            task.file_id,
+            task.datatype,
+        )
+        return True
+    try:
+        runner.run()
+        return True
+    except Exception as e:  # pragma: no cover (unexpected edge)
+        logging.error(
+            "[%s][%s][%s] failed: %s", task.model_name, task.file_id, task.datatype, e
+        )
+        return False
+
+
+def execute_tasks(
+    tasks: List[Task], base_dirs: Dict[str, Path], jobs: int
+) -> List[Task]:
+    failures: List[Task] = []
+    if jobs <= 1:
+        for t in tasks:
+            if not run_task(t, base_dirs):
+                failures.append(t)
+        return failures
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        future_map: Dict[Future, Task] = {
+            pool.submit(run_task, t, base_dirs): t for t in tasks
+        }
         for fut in as_completed(future_map):
             if not fut.result():
                 failures.append(future_map[fut])
+    return failures
 
-    # Retries
-    for attempt in range(args.retry):
+
+def retry_failures(
+    failures: List[Task], base_dirs: Dict[str, Path], retries: int
+) -> List[Task]:
+    for attempt in range(retries):
         if not failures:
             break
-        logging.info(f"Retry attempt {attempt+1} for {len(failures)} failures")
-        new_failures = []
+        logging.info(
+            "Retry attempt %d for %d failures", attempt + 1, len(failures)
+        )
+        new_failures: List[Task] = []
         for t in failures:
-            if not worker(t):
+            if not run_task(t, base_dirs):
                 new_failures.append(t)
+            else:
+                # optional backoff small pause removed for performance
+                pass
         failures = new_failures
+    return failures
 
-    # Summary and exit
+
+def main(argv: list[str] | None = None) -> int:
+    load_project_env()
+    parser = build_argument_parser()
+    args = parser.parse_args(argv)
+
+    level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=level)
+
+    # Validate jobs
+    if args.jobs < 1:
+        logging.error("--jobs must be >= 1")
+        return 2
+
+    dataset_root = args.data_dir / args.dataset
+    base_dirs: Dict[str, Path] = {
+        "encoded": dataset_root / "encoded",
+        "prompts": dataset_root / "prompts",
+        "questions": dataset_root / "prompts" / "questions",
+        "guides": dataset_root / "guides",
+        "outputs": args.outputs_dir,
+    }
+    for sub in ("encoded", "prompts"):
+        if not base_dirs[sub].exists():
+            logging.error("Missing required dataset subdirectory: %s", base_dirs[sub])
+            return 2
+
+    models = expand_models(args.models)
+    validate_api_keys(models)
+
+    selected_files = parse_csv_or_list(args.files) or parse_csv_or_list(args.questions)
+    file_ids = selected_files or list_file_ids(base_dirs["encoded"])
+    datatypes = parse_csv_or_list(args.datatypes) or list_datatypes(base_dirs["encoded"])
+
+    if not file_ids:
+        logging.error("No file IDs resolved (check --files or dataset contents)")
+        return 2
+    if not datatypes:
+        logging.error("No datatypes resolved (check --datatypes or dataset contents)")
+        return 2
+
+    tasks = prepare_tasks(models, file_ids, datatypes, args)
+    logging.info(
+        "Prepared %d tasks (%d models × %d files × %d datatypes) using %d job(s)",
+        len(tasks),
+        len(models),
+        len(file_ids),
+        len(datatypes),
+        args.jobs,
+    )
+
+    failures = execute_tasks(tasks, base_dirs, args.jobs)
+    failures = retry_failures(failures, base_dirs, args.retry)
+
     if failures:
-        logging.error("Batch completed with failures:")
-        for t in failures:
-            logging.error(f"  {t}")
-        sys.exit(1)
+        logging.error("Batch completed with %d failure(s)", len(failures))
+        for t in failures[:10]:  # limit verbose list
+            logging.error("  %s", t)
+        if len(failures) > 10:
+            logging.error("  ... (%d more)", len(failures) - 10)
+        return 1
 
     logging.info("Batch completed successfully.")
-    sys.exit(0)
+    return 0
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())
