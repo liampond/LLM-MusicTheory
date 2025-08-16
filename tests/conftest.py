@@ -8,14 +8,15 @@ This file provides:
 - Mock utilities and test data generators
 """
 
-import pytest
-import tempfile
 import os
 import sys
-from pathlib import Path
-from unittest.mock import Mock, patch
 import types
-from typing import Dict, Any
+import tempfile
+from pathlib import Path
+from typing import Dict, Any, Iterator, List
+
+import pytest
+from unittest.mock import Mock
 
 # Ensure the package is importable in a src/ layout
 _TESTS_DIR = Path(__file__).resolve().parent
@@ -26,36 +27,48 @@ if str(_SRC) not in sys.path:
 
 from llm_music_theory.models.base import LLMInterface, PromptInput
 
+__all__ = [
+    "mock_llm",
+    "temp_project_structure",
+    "temp_project_dir",
+    "mock_api_keys",
+    "sample_prompt_input",
+    "generate_test_music_data",
+]
+
+_API_KEY_ENV_VARS: List[str] = [
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GOOGLE_API_KEY",
+    "DEEPSEEK_API_KEY",
+]
+
 
 # ===============================================================================
 # SHARED FIXTURES
 # ===============================================================================
 
 @pytest.fixture
-def mock_llm():
-    """Create a mock LLM for testing that captures queries without API calls."""
-    
-    class MockLLM(LLMInterface):
-        def __init__(self):
-            self.last_query = None
-            self.captured_queries = []
+def mock_llm() -> LLMInterface:
+    """Create a mock LLM capturing queries without making external API calls."""
+
+    class MockLLM(LLMInterface):  # type: ignore[misc]
+        def __init__(self) -> None:
+            self.last_query: PromptInput | None = None
+            self.captured_queries: list[PromptInput] = []
             self.response = "Mock test response"
-        
-        def query(self, input: PromptInput) -> str:
+
+        def query(self, input: PromptInput) -> str:  # noqa: A003
             self.last_query = input
             self.captured_queries.append(input)
             return self.response
-    
+
     return MockLLM()
 
 
 @pytest.fixture
-def temp_project_structure():
-    """Create a complete temporary project structure for testing.
-    
-    This fixture creates a realistic project directory structure with all
-    necessary files for testing, eliminating dependencies on real project data.
-    """
+def temp_project_structure() -> Iterator[Dict[str, Any]]:
+    """Yield a realistic temporary project structure for integration-style tests."""
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
 
@@ -141,39 +154,34 @@ version = "0.1.0"
 
 
 @pytest.fixture
-def temp_project_dir(temp_project_structure):
-    """Compatibility alias: return project root Path for tests expecting temp_project_dir."""
+def temp_project_dir(temp_project_structure: Dict[str, Any]) -> Path:
+    """Return the temporary project root path (compat alias)."""
     return temp_project_structure['root']
 
 
 @pytest.fixture
-def mock_api_keys(monkeypatch):
-    """Mock all API keys to prevent real API calls and missing key errors."""
-    mock_keys = {
+def mock_api_keys(monkeypatch) -> Dict[str, str]:
+    """Mock API keys in env and settings to avoid network usage."""
+    mock_keys: Dict[str, str] = {
         "openai": "test-openai-key",
         "anthropic": "test-anthropic-key",
-        "google": "test-google-key", 
-        "deepseek": "test-deepseek-key"
+        "google": "test-google-key",
+        "deepseek": "test-deepseek-key",
     }
-    
-    # Set environment variables
     for key, value in mock_keys.items():
         monkeypatch.setenv(f"{key.upper()}_API_KEY", value)
-    
-    # Mock the settings module
     monkeypatch.setattr("llm_music_theory.config.settings.API_KEYS", mock_keys)
-    
     return mock_keys
 
 
 @pytest.fixture
-def sample_prompt_input():
-    """Create a sample PromptInput for testing."""
+def sample_prompt_input() -> PromptInput:
+    """Return a sample PromptInput instance used by multiple tests."""
     return PromptInput(
         system_prompt="You are a music theory expert.",
         user_prompt="Analyze this musical excerpt: <mei>test</mei>",
         temperature=0.7,
-        max_tokens=500
+        max_tokens=500,
     )
 
 
@@ -182,24 +190,24 @@ def sample_prompt_input():
 # ===============================================================================
 
 class MockResponse:
-    """Utility class for mocking API responses."""
-    
+    """Utility class used for simulating minimal OpenAI style responses."""
+
     def __init__(self, content: str):
         self.content = content
         self.choices = [Mock(message=Mock(content=content))]
 
 
-def create_mock_openai_client(response_content: str = "Mock OpenAI response"):
-    """Create a mock OpenAI client for testing."""
-    mock_client = Mock()
+def create_mock_openai_client(response_content: str = "Mock OpenAI response") -> Mock:
+    """Return a mock OpenAI client with a preconfigured response."""
+    mock_client: Mock = Mock()
     mock_response = MockResponse(response_content)
     mock_client.chat.completions.create.return_value = mock_response
     return mock_client
 
 
-def create_mock_anthropic_client(response_content: str = "Mock Anthropic response"):
-    """Create a mock Anthropic client for testing."""
-    mock_client = Mock()
+def create_mock_anthropic_client(response_content: str = "Mock Anthropic response") -> Mock:
+    """Return a mock Anthropic client with a preconfigured response."""
+    mock_client: Mock = Mock()
     mock_response = Mock()
     mock_response.content = [Mock(text=response_content)]
     mock_client.messages.create.return_value = mock_response
@@ -211,8 +219,8 @@ def create_mock_anthropic_client(response_content: str = "Mock Anthropic respons
 # ===============================================================================
 
 # Configure pytest markers
-def pytest_configure(config):
-    """Configure custom pytest markers."""
+def pytest_configure(config):  # type: ignore[override]
+    """Register custom pytest markers for test categorization."""
     config.addinivalue_line(
         "markers", "unit: mark test as a unit test"
     )
@@ -230,8 +238,8 @@ def pytest_configure(config):
     )
 
 
-def pytest_collection_modifyitems(config, items):
-    """Automatically mark tests based on their location and name."""
+def pytest_collection_modifyitems(config, items):  # type: ignore[override]
+    """Auto-apply markers based on nodeid conventions to reduce boilerplate."""
     for item in items:
         # Mark tests by file
         if "test_models" in item.nodeid:
@@ -249,8 +257,8 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.slow)
 
 
-def pytest_ignore_collect(path, config):
-    """Ignore legacy duplicate tests to avoid double coverage and conflicts."""
+def pytest_ignore_collect(path, config):  # type: ignore[override]
+    """Ignore legacy duplicate tests to avoid double coverage/conflicts."""
     p = str(path)
     if p.endswith("_fixed.py") or p.endswith("_new.py"):
         return True
@@ -262,33 +270,20 @@ def pytest_ignore_collect(path, config):
 # ===============================================================================
 
 @pytest.fixture(autouse=True)
-def setup_test_environment(monkeypatch):
-    """Automatically set up a clean test environment for all tests."""
-    # Ensure no real API keys are used
-    api_key_vars = [
-        "OPENAI_API_KEY",
-        "ANTHROPIC_API_KEY", 
-        "GOOGLE_API_KEY",
-        "DEEPSEEK_API_KEY"
-    ]
-    
-    for var in api_key_vars:
+def setup_test_environment(monkeypatch) -> None:
+    """Ensure a clean, deterministic test environment (API keys sanitized)."""
+    for var in _API_KEY_ENV_VARS:
         if var in os.environ:
             monkeypatch.delenv(var, raising=False)
         monkeypatch.setenv(var, f"test-{var.lower()}")
 
 
-@pytest.fixture(autouse=True)
-def stub_external_sdks(monkeypatch):
-    """Provide lightweight stubs for third-party SDKs used by model classes.
+def _ensure_stub_modules() -> None:
+    """Install lightweight stub modules for optional third‑party SDKs if missing."""
+    if "openai" not in sys.modules:
+        openai_mod = types.ModuleType("openai")
 
-    This avoids import-time failures for optional dependencies during tests.
-    """
-    # Stub 'openai' with minimal OpenAI client
-    if 'openai' not in sys.modules:
-        openai_mod = types.ModuleType('openai')
-
-        class _OpenAI:
+        class _OpenAI:  # pragma: no cover
             def __init__(self, *args, **kwargs):
                 self.chat = types.SimpleNamespace(
                     completions=types.SimpleNamespace(
@@ -301,13 +296,12 @@ def stub_external_sdks(monkeypatch):
                 )
 
         openai_mod.OpenAI = _OpenAI
-        sys.modules['openai'] = openai_mod
+        sys.modules["openai"] = openai_mod
 
-    # Stub 'anthropic' with minimal Anthropic client
-    if 'anthropic' not in sys.modules:
-        anthropic_mod = types.ModuleType('anthropic')
+    if "anthropic" not in sys.modules:
+        anthropic_mod = types.ModuleType("anthropic")
 
-        class _Anthropic:
+        class _Anthropic:  # pragma: no cover
             def __init__(self, *args, **kwargs):
                 self.messages = types.SimpleNamespace(
                     create=lambda **kwargs: types.SimpleNamespace(
@@ -316,32 +310,38 @@ def stub_external_sdks(monkeypatch):
                 )
 
         anthropic_mod.Anthropic = _Anthropic
-        sys.modules['anthropic'] = anthropic_mod
+        sys.modules["anthropic"] = anthropic_mod
 
-    # Stub 'google.genai' under top-level 'google' package
-    # Ensure top-level 'google' package exists
-    google_pkg = sys.modules.get('google')
+    google_pkg = sys.modules.get("google")
     if google_pkg is None:
-        google_pkg = types.ModuleType('google')
-        sys.modules['google'] = google_pkg
+        google_pkg = types.ModuleType("google")
+        sys.modules["google"] = google_pkg
+    if "google.genai" not in sys.modules:
+        genai_mod = types.ModuleType("google.genai")
 
-    # Create 'google.genai' submodule if missing
-    if 'google.genai' not in sys.modules:
-        genai_mod = types.ModuleType('google.genai')
-
-        class _ModelsNS:
+        class _ModelsNS:  # pragma: no cover
             def generate_content(self, **kwargs):
                 return types.SimpleNamespace(text="stubbed response")
 
-        class _Client:
+        class _Client:  # pragma: no cover
             def __init__(self, *args, **kwargs):
                 self.models = _ModelsNS()
 
         genai_mod.Client = _Client
+        setattr(google_pkg, "genai", genai_mod)
+        sys.modules["google.genai"] = genai_mod
 
-        # Attach as attribute of 'google' package and register in sys.modules
-        setattr(google_pkg, 'genai', genai_mod)
-        sys.modules['google.genai'] = genai_mod
+
+@pytest.fixture(autouse=True)
+def stub_external_sdks() -> None:
+    """Provide lightweight stubs for optional SDK imports to avoid hard deps."""
+    _ensure_stub_modules()
+
+
+@pytest.fixture(autouse=True)
+def deterministic_seed() -> None:  # pragma: no cover
+    """Placeholder for deterministic seeding (extend if randomness added)."""
+    return None
 
 
 # ===============================================================================
@@ -349,7 +349,7 @@ def stub_external_sdks(monkeypatch):
 # ===============================================================================
 
 def generate_test_music_data(format_type: str, question_id: str = "Q1a") -> str:
-    """Generate synthetic music data for testing."""
+    """Generate minimal synthetic music notation for the given format."""
     if format_type == "mei":
         return f"""<mei xmlns="http://www.music-encoding.org/ns/mei">
     <music>
