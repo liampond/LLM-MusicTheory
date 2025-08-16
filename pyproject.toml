@@ -43,6 +43,7 @@ pytest-cov           = "^4.0.0"
 # Now you can run with `poetry run run-single` or `poetry run run-batch`
 run-single  = "llm_music_theory.cli.run_single:main"
 run-batch   = "llm_music_theory.cli.run_batch:main"
+run-experiment = "llm_music_theory.cli.run_experiment:main"
 
 [build-system]
 requires    = ["poetry-core"]
