@@ -18,11 +18,11 @@ class GeminiModel(LLMInterface):
 
     def __init__(self, model_name: Optional[str] = None):
         # Load API key
-        self.api_key = os.getenv("GOOGLE_API_KEY")
+        self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GOOGLE_GENAI_API_KEY")
         if not self.api_key:
             raise EnvironmentError("GOOGLE_API_KEY is not set in the environment.")
 
-        # Initialize the client using the Client class
+        # Initialize the client explicitly with the API key (avoid relying on ambient config)
         self.client = genai.Client(api_key=self.api_key)
         
         # Choose default model from settings if not overridden

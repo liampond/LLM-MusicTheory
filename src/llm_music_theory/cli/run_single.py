@@ -4,6 +4,7 @@
 import argparse
 import logging
 import sys
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -73,6 +74,11 @@ def main():
         "--model",
         choices=["chatgpt", "claude", "gemini", "deepseek"],
         help="LLM to use"
+    )
+    run_group.add_argument(
+        "--model-name",
+        dest="model_name_override",
+        help="Provider model ID override (e.g. gemini-2.5-pro). If omitted, project default is used."
     )
     run_group.add_argument(
         "--file",
@@ -160,8 +166,34 @@ def main():
         if missing:
             parser.error(f"The following arguments are required: {', '.join(missing)}")
 
-    # Dynamically load the requested model
+    # Basic API key validation for models that require an external key.
+    # (Currently all implemented models except potential purely local ones.)
+    if args.model in {"chatgpt", "claude", "gemini", "deepseek"}:
+        # Map each model to its specific env var so unrelated placeholder keys don't block runs.
+        model_key_map = {
+            "chatgpt": "OPENAI_API_KEY",
+            "claude": "ANTHROPIC_API_KEY",
+            "gemini": "GOOGLE_API_KEY",  # google-genai SDK expects GOOGLE_API_KEY
+            "deepseek": "DEEPSEEK_API_KEY",
+        }
+        env_var = model_key_map[args.model]
+        api_key = os.getenv(env_var)
+        # Placeholder / invalid heuristics (allow short Google keys; just check placeholder token)
+        if not api_key or "your_" in api_key.lower():
+            logging.error(
+                f"Required key {env_var} missing or placeholder. Add a real key to your .env before running this model."
+            )
+            sys.exit(2)
+
+    # Dynamically load the requested model now that key sanity check passed
     model = get_llm(args.model)
+    # If user supplied a provider-specific model name override, try to set attribute
+    if getattr(args, "model_name_override", None):
+        # Most model wrappers expose model_name; set if present
+        if hasattr(model, "model_name"):
+            setattr(model, "model_name", args.model_name_override)
+        else:
+            logging.warning("Model override ignored; wrapper has no 'model_name' attribute")
 
     # Configure and run the prompt
     runner = PromptRunner(

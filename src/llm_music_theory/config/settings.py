@@ -9,7 +9,8 @@ load_dotenv()
 DEFAULT_MODELS = {
     "openai": "gpt-4.1-nano-2025-04-14",  # Cheapest, $0.10USD/MToken Input
     "anthropic": "claude-3-haiku-20240307",
-    "google": "gemini-2.5-flash-preview-04-17",
+    # Use a stable generally-available Gemini text model rather than a dated preview
+    "google": "gemini-1.5-flash",
     "deepseek": "deepseek-chat" # Cheapest, $0.07USD/MToken Input
 }
 
