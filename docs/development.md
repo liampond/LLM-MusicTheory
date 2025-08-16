@@ -59,32 +59,12 @@ We follow Python best practices:
 ### Example Code Style
 
 ```python
-from typing import Optional, List
 from pathlib import Path
+from typing import Optional
 
-def find_encoded_file(
-    question_number: str,
-    datatype: str,
-    encoded_dir: Path,
-    required: bool = True
-) -> Optional[Path]:
-    """
-    Locate the encoded music file for a given question and format.
-    
-    Parameters:
-        question_number: e.g. "Q1a"
-        datatype: one of ["mei","musicxml","abc","humdrum"]
-        encoded_dir: base folder where encoded files live
-        required: whether to raise exception if file missing
-
-    Returns:
-        Path to the file if found, or None if required=False and missing.
-        
-    Raises:
-        ValueError: For unsupported datatype.
-        FileNotFoundError: If required=True and file is missing.
-    """
-    # Implementation here...
+def find_encoded_file(file_id: str, datatype: str, encoded_dir: Path, required: bool = True) -> Optional[Path]:
+    """Return path to encoded file for the given id & datatype (or None if optional)."""
+    ...  # see path_utils for implementation
 ```
 
 ## Testing
@@ -199,20 +179,9 @@ def test_new_model_query():
 
 ### Adding New Music Formats
 
-1. **Add base prompt** in `data/RCM6/prompts/base/base_newformat.txt` (legacy dataset) or preferably add to a new modern dataset like `fux-counterpoint`.
+1. **Add base prompt** in `data/RCM6/prompts/base/base_newformat.txt` (legacy) or a new dataset directory (recommended).
 
-2. **Update path utilities** to recognize the format:
-
-```python
-# In src/llm_music_theory/utils/path_utils.py
-ext_map = {
-    "mei": ".mei",
-    "musicxml": ".musicxml", 
-    "abc": ".abc",
-    "humdrum": ".krn",
-    "newformat": ".nf",  # Add here
-}
-```
+2. **Update path utilities** to recognize the format (extend `_DATATYPE_EXT` in `path_utils`).
 
 3. **Add sample data** in `data/RCM6/encoded/newformat/` (only if needed for backwards compatibility tests)
 
@@ -237,7 +206,7 @@ src/llm_music_theory/           # Main package
 ├── config/                     # Configuration management
 ├── core/                       # Business logic
 ├── models/                     # LLM implementations
-├── prompts/                    # Prompt building
+├── prompts/                    # PromptBuilder + base prompts (supports custom ordering)
 └── utils/                      # Utility functions
 
 tests/                          # Test suite
@@ -409,6 +378,24 @@ poetry update
 ```
 
 ### Python Version
+
+## Prompt Assembly Ordering
+
+Legacy ordering (format prompt, encoded source, guides, question) is preserved by default for backward compatibility. New datasets (e.g. `fux-counterpoint`) can supply an explicit ordering to `PromptBuilder` such as:
+
+```python
+ordering = ["question_prompt", "guides", "format_prompt", "encoded_data"]
+```
+
+This ensures task clarity before raw data, improving LLM grounding.
+
+## Output Artifacts
+
+When `PromptRunner(save=True)` the runner writes:
+1. Response text file
+2. `<same>.input.json` bundle containing raw components + compiled user prompt & length metadata.
+
+Use these JSON bundles to reproduce or audit experiments without re-resolving filesystem resources.
 
 - **Minimum**: Python 3.11
 - **Testing**: Test against supported versions

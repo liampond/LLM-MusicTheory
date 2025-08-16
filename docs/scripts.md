@@ -63,10 +63,9 @@ poetry run python scripts/clean_outputs.py --days 30
 # Validate installation
 ```
 
-**Usage:**
-```bash
-chmod +x scripts/setup_dev.sh
-./scripts/setup_dev.sh
+| **Poetry / pytest** | Run tests | `poetry run pytest` |
+| **Format (black/isort)** | Format code (if configured) | `poetry run black src tests` |
+| **Lint (optional)** | Static analysis | `poetry run pylint src/llm_music_theory` |
 ```
 
 ### Test Automation
@@ -75,9 +74,8 @@ chmod +x scripts/setup_dev.sh
 
 ```bash
 #!/bin/bash
-# Run unit tests
-# Generate coverage report  
-# Run integration tests
+| Validate data (future) | Data integrity checks | (planned) |
+| Clean outputs (future) | Remove aged outputs | (planned) |
 # Check for test failures
 # Generate summary report
 ```
@@ -86,9 +84,8 @@ chmod +x scripts/setup_dev.sh
 ```bash
 ./scripts/run_tests.sh --fast        # Skip slow tests
 ./scripts/run_tests.sh --coverage    # Generate coverage report
-./scripts/run_tests.sh --models      # Test only model implementations
-```
-
+| Batch experiments (future) | Automate runs | (planned) |
+| Generate docs (future) | Build extended docs site | (planned) |
 ### Code Formatting
 
 **`format_code.sh`** - Automated code formatting:
@@ -108,11 +105,11 @@ chmod +x scripts/setup_dev.sh
 ```python
 # Check file existence
 # Validate file formats
-# Verify data completeness
-# Report missing files
-# Check encoding integrity
-```
-
+poetry install
+poetry run pytest
+poetry run black src tests
+poetry run python scripts/validate_data.py  # (when added)
+poetry run python scripts/clean_outputs.py --days 30  # (when added)
 **Usage:**
 ```bash
 poetry run python scripts/validate_data.py
@@ -126,7 +123,7 @@ poetry run python scripts/validate_data.py --verbose # Detailed output
 
 ```python
 # Remove old output files
-# Archive important results
+Environment setup handled via Poetry:
 # Free up disk space
 # Generate cleanup report
 ```
@@ -140,7 +137,7 @@ poetry run python scripts/clean_outputs.py --days 30
 poetry run python scripts/clean_outputs.py --dry-run
 
 # Clean specific model outputs
-poetry run python scripts/clean_outputs.py --model chatgpt
+Comprehensive testing via pytest:
 ```
 
 ### Batch Experiments
@@ -153,7 +150,7 @@ poetry run python scripts/clean_outputs.py --model chatgpt
 # Generate comparison reports
 # Export data for analysis
 ```
-
+Example formatting helper script (optional):
 **Usage:**
 ```bash
 # Run default experiment set
@@ -166,7 +163,7 @@ poetry run python scripts/batch_experiment.py --config experiments/config1.json
 poetry run python scripts/batch_experiment.py --resume
 ```
 
-## 🔧 Creating Custom Scripts
+`validate_data.py` (planned): verify data integrity:
 
 ### Script Template
 
@@ -178,7 +175,7 @@ Custom script template for LLM-MusicTheory project.
 import argparse
 from pathlib import Path
 import sys
-
+`clean_outputs.py` (planned): manage output files:
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
@@ -190,24 +187,18 @@ def main():
     parser = argparse.ArgumentParser(description="Your script description")
     parser.add_argument("--option", help="Script option")
     args = parser.parse_args()
-    
+`batch_experiment.py` (planned): run predefined experiment sets:
     logger = setup_logger(__name__)
     logger.info("Starting script execution")
     
     # Your script logic here
-    
+*(Example pyproject script entry configuration when scripts are added)*
     logger.info("Script completed successfully")
 
-if __name__ == "__main__":
-    main()
-```
+For script-specific help (once implemented):
+Test suite runtime: ~1–2s (subject to change)
 
-### Best Practices
-
-1. **Logging**: Use the project's logging configuration
-2. **Error Handling**: Implement proper exception handling
-3. **Documentation**: Include clear docstrings and help text
-4. **Path Management**: Use Path objects for file operations
+(Representative local timings depend on machine; measure in CI for accuracy.)
 5. **Configuration**: Accept command-line arguments for flexibility
 
 ### Making Scripts Executable

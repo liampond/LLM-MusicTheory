@@ -1,6 +1,9 @@
 # 📚 Documentation
 
-Comprehensive documentation for the LLM-MusicTheory toolkit.
+Authoritative reference for the LLM‑MusicTheory toolkit. This folder focuses on:
+* How the system is structured (architecture)
+* How to use & extend it (user + API guides)
+* Development & contribution practices
 
 ## 🎯 Quick Navigation
 
@@ -8,7 +11,7 @@ Comprehensive documentation for the LLM-MusicTheory toolkit.
 |----------|---------|----------|
 | **[../README.md](../README.md)** | Main project overview | All users |
 | **[Architecture](#-architecture)** | System design | Developers |
-| **[API Reference](#-api-reference)** | Code documentation | Developers |
+| **[API Reference](#-api-reference)** | Key classes & functions | Developers |
 | **[Best Practices](#-best-practices)** | Usage guidelines | All users |
 
 ## 🏗 Architecture
@@ -41,12 +44,12 @@ graph TD
 
 ### Data Flow
 
-1. **Input Processing**: CLI parses user arguments
-2. **Resource Discovery**: System locates required files
-3. **Prompt Assembly**: Builder combines modular components
-4. **Model Selection**: Dispatcher initializes chosen LLM provider
-5. **Execution**: Runner sends prompt and processes response
-6. **Output Handling**: Response returned or saved to file
+1. CLI parses user input
+2. Resources (prompts / encoded file / guides) are loaded
+3. PromptBuilder assembles ordered sections
+4. Dispatcher provides the selected model instance
+5. Model queried; response returned
+6. (Optional) Artifacts persisted (response & JSON input bundle)
 
 ## 📖 API Reference
 
@@ -54,32 +57,28 @@ graph TD
 
 #### `PromptRunner`
 
-Central orchestrator for prompt execution.
+Central orchestrator for one prompt execution.
 
+Constructor (simplified):
 ```python
-class PromptRunner:
-    def __init__(
-        self,
-        model: LLMInterface,
-        question_number: str,
-        datatype: str,
-        context: bool,
-        **kwargs
-    ):
-        """Initialize with execution parameters."""
-    
-    def run(self) -> str:
-        """Execute prompt and return LLM response."""
+PromptRunner(
+    model: LLMInterface,
+    file_id: str | None = None,            # preferred identifier
+    datatype: str = "mei",
+    context: bool = False,
+    dataset: str = "fux-counterpoint",    # new default dataset name
+    base_dirs: dict[str, Path] | None = None,
+    temperature: float = 0.0,              # validated to [0.0,1.0] at build
+    max_tokens: int | None = None,
+    save: bool = False,
+    # Legacy aliases (still accepted by tests / scripts):
+    question_number: str | None = None,
+    exam_date: str | None = None,
+)
 ```
 
-**Parameters:**
-- `model`: LLM provider instance
-- `question_number`: Question ID (e.g., "Q1b")
-- `datatype`: Music format ("mei", "musicxml", "abc", "humdrum")
-- `context`: Include contextual guides
-- `temperature`: Sampling temperature (0.0-2.0)
-- `max_tokens`: Response length limit
-- `save`: Save response to file
+Call `run()` to receive the raw model response. When `save=True` a sibling
+`*.input.json` bundle capturing all assembled components is also written.
 
 #### `LLMInterface`
 
@@ -94,19 +93,10 @@ class LLMInterface(ABC):
 
 #### `PromptBuilder`
 
-Modular prompt composition system.
+Assembles prompt sections into a `PromptInput`. Supports deterministic
+ordering (legacy default vs. custom ordering for new datasets).
 
-```python
-class PromptBuilder:
-    def build_prompt_input(
-        self,
-        question_number: str,
-        datatype: str,
-        context: bool,
-        **kwargs
-    ) -> PromptInput:
-        """Build complete prompt from components."""
-```
+Key idea: you pass raw components → builder returns validated `PromptInput`.
 
 ### Utility Functions
 
@@ -135,7 +125,7 @@ poetry run run-single [OPTIONS]
 
 **Options:**
 - `--model {chatgpt,claude,gemini,deepseek}`: LLM provider (required)
-- `--question TEXT`: Question ID (required)
+- `--file-id TEXT` / `--question TEXT`: Identifier (legacy alias retained)
 - `--datatype {mei,musicxml,abc,humdrum}`: Music format (required)
 - `--context`: Include context guides
 - `--temperature FLOAT`: Sampling temperature
@@ -161,10 +151,10 @@ poetry run run-batch [OPTIONS]
 
 ### Prompt Design
 
-1. **Start Simple**: Test with basic prompts before adding complexity
-2. **Use Context Wisely**: Context helps but increases token costs
-3. **Temperature Control**: Use 0.0 for consistent results, higher for creativity
-4. **Token Management**: Set max_tokens to control response length and costs
+1. Keep it minimal first; add guides/context only if needed
+2. Context increases tokens (cost) – measure value before scaling up
+3. Temperature 0.0 for reproducibility; >0.4 for exploratory / creative tasks
+4. Constrain `max_tokens` to prevent runaway cost
 
 ### Development
 
@@ -175,28 +165,25 @@ poetry run run-batch [OPTIONS]
 
 ### Cost Management
 
-1. **Start with DeepSeek**: Cheapest option for testing
-2. **Use Free Tiers**: Google Gemini offers generous free tier
-3. **Monitor Usage**: Check provider dashboards regularly
-4. **Batch Wisely**: Use batch processing for efficient experiments
+1. Start with lower‑cost providers (e.g. DeepSeek) while iterating
+2. Leverage free tiers (Gemini) before using premium models
+3. Monitor dashboards; set soft internal token budgets
+4. Batch experiments; reuse compiled prompt bundles when possible
 
 ### File Organization
 
 ```
-your-project/
-├── outputs/                    # LLM responses (gitignored)
+project/
+├── outputs/
 │   ├── ChatGPT/
-│   ├── Claude/
-│   └── ...
-├── experiments/                # Your experimental setups
-│   ├── experiment_1.py
-│   └── results/
-└── data/                      # Your custom data (optional)
-    ├── custom_questions.txt
-    └── custom_guides.txt
+│   │   ├── fux-counterpoint__Q1b_mei_context.txt
+│   │   └── fux-counterpoint__Q1b_mei_context.input.json
+│   └── Claude/
+├── data/ (optional project‑specific dataset)
+└── experiments/
 ```
 
-## � Advanced Usage
+## 🧩 Advanced Usage
 
 ### Custom LLM Providers
 
@@ -395,4 +382,4 @@ Please [open an issue](https://github.com/liampond/LLM-MusicTheory/issues) with 
 
 ---
 
-*Documentation last updated: January 2025*
+*Documentation last updated: August 2025*

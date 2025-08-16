@@ -2,7 +2,7 @@
 
 Practical examples and tutorials for the LLM-MusicTheory toolkit. Start here to learn by doing!
 
-## � Quick Start Examples
+## 🚀 Quick Start Examples
 
 Perfect for getting started and understanding the basics.
 
@@ -60,7 +60,7 @@ from llm_music_theory.core.dispatcher import get_llm
 llm = get_llm("chatgpt")
 runner = PromptRunner(
     model=llm,
-    question_number="Q1b",
+    file_id="Q1b",
     datatype="mei",
     context=True
 )
@@ -76,7 +76,7 @@ results = {}
 
 for model_name in models:
     llm = get_llm(model_name)
-    runner = PromptRunner(model=llm, question_number="Q1a", datatype="mei")
+    runner = PromptRunner(model=llm, file_id="Q1a", datatype="mei")
     results[model_name] = runner.run()
 
 # Compare responses
@@ -89,7 +89,7 @@ for model, response in results.items():
 #### Batch Processing
 ```python
 # examples/batch_processing.py
-questions = ["Q1a", "Q1b", "Q2a", "Q2b"]
+questions = ["Q1a", "Q1b"]
 datatypes = ["mei", "musicxml"]
 models = ["chatgpt", "claude"]
 
@@ -99,7 +99,7 @@ for model_name in models:
             # Process each combination
             runner = PromptRunner(
                 model=get_llm(model_name),
-                question_number=question,
+                file_id=question,
                 datatype=datatype,
                 save=True
             )
@@ -114,16 +114,16 @@ def compare_context_modes(question, datatype, model):
     
     # With context
     runner_context = PromptRunner(
-        model=get_llm(model),
-        question_number=question,
+    model=get_llm(model),
+    file_id=question,
         datatype=datatype,
         context=True
     )
     
     # Without context  
     runner_no_context = PromptRunner(
-        model=get_llm(model),
-        question_number=question,
+    model=get_llm(model),
+    file_id=question,
         datatype=datatype,
         context=False
     )
@@ -151,7 +151,7 @@ class MyCustomLLM(LLMInterface):
 
 # Register and use
 custom_llm = MyCustomLLM("your-api-key")
-runner = PromptRunner(model=custom_llm, question_number="Q1a", datatype="mei")
+runner = PromptRunner(model=custom_llm, file_id="Q1a", datatype="mei")
 ```
 
 ## 🔧 Development Examples
@@ -164,11 +164,7 @@ from llm_music_theory.core.runner import PromptRunner
 
 def test_example():
     """Example of how to test new functionality."""
-    runner = PromptRunner(
-        model=MockLLM(),
-        question_number="Q1a", 
-        datatype="mei"
-    )
+    runner = PromptRunner(model=MockLLM(), file_id="Q1a", datatype="mei")
     response = runner.run()
     assert len(response) > 0
 ```
@@ -177,16 +173,14 @@ def test_example():
 ```python
 # examples/performance_metrics.py
 import time
-from llm_music_theory.utils.metrics import measure_performance
-
-@measure_performance
+import time
 def run_benchmark():
     """Benchmark prompt execution time."""
     start = time.time()
-    runner = PromptRunner(...)
+    runner = PromptRunner(model=get_llm("chatgpt"), file_id="Q1a", datatype="mei")
     response = runner.run()
-    end = time.time()
-    return {"response_time": end - start, "response_length": len(response)}
+    duration = time.time() - start
+    print({"response_time": duration, "response_length": len(response)})
 ```
 
 ## 💡 Best Practices Demonstrated
@@ -227,9 +221,8 @@ with PromptRunner(...) as runner:
 ```
 outputs/
 ├── ChatGPT/
-│   ├── Q1a_mei_context.txt
-│   ├── Q1a_mei_nocontext.txt
-│   └── Q1b_musicxml_context.txt
+│   ├── fux-counterpoint__Q1a_mei_context.txt
+│   └── fux-counterpoint__Q1a_mei_context.input.json
 ├── Claude/
 │   └── ...
 └── analysis/
@@ -241,14 +234,12 @@ outputs/
 ```json
 {
   "model": "chatgpt",
-  "question": "Q1b",
+    "file_id": "Q1b",
   "datatype": "mei",
   "context": true,
   "timestamp": "2025-01-08T10:30:00Z",
   "response": "The chord progression shows...",
   "metadata": {
-    "tokens_used": 150,
-    "response_time": 2.3,
     "temperature": 0.0
   }
 }

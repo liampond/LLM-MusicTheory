@@ -38,72 +38,32 @@ class PromptInput:
 
 ### PromptRunner
 
-Main execution engine for running evaluations.
+Main execution engine for a single prompt evaluation.
 
 ```python
-from llm_music_theory.core.runner import PromptRunner
-
-runner = PromptRunner(
-    model=llm_instance,
-    question_number="Q1b",
-    datatype="mei",
-    context=True,
-    exam_date="",
-    base_dirs=base_directories,
-    temperature=0.7,
-    max_tokens=500,
-    save=True
+PromptRunner(
+    model: LLMInterface,
+    file_id: str | None = None,      # preferred identifier (legacy alias question_number)
+    datatype: str = "mei",
+    context: bool = False,
+    dataset: str = "fux-counterpoint",
+    base_dirs: dict[str, Path] | None = None,
+    temperature: float = 0.0,
+    max_tokens: int | None = None,
+    save: bool = False,
+    question_number: str | None = None,  # legacy
+    exam_date: str | None = None,        # legacy
 )
-
-response = runner.run()
+response = PromptRunner(model=llm, file_id="Q1b", datatype="mei", context=True).run()
 ```
 
-**Parameters:**
-- `model` (LLMInterface): LLM instance to use
-- `question_number` (str): Question identifier (e.g., "Q1b")
-- `datatype` (str): Music format ("mei", "musicxml", "abc", "humdrum")
-- `context` (bool): Whether to include contextual guides
-- `exam_date` (str): Exam date identifier (empty for default)
-- `base_dirs` (dict): Directory paths for data locations
-- `temperature` (float): Sampling temperature
-- `max_tokens` (int, optional): Maximum response tokens
-- `save` (bool): Whether to save response to file
-
-**Returns:**
-- `str`: The LLM's response
+When `save=True`, a matching `<filename>.input.json` bundle is persisted with the full compiled user prompt + component lengths.
 
 ### PromptBuilder
 
-Constructs prompts from components.
+Constructs a `PromptInput` from raw components. Supports an optional `ordering` to control how sections are presented (used by new datasets to prioritize task description + guides before format instructions & source encoding).
 
-```python
-from llm_music_theory.prompts.prompt_builder import PromptBuilder
-
-builder = PromptBuilder()
-prompt_input = builder.build_prompt_input(
-    question_text="Analyze this musical excerpt...",
-    base_format_prompt="You are a music theory expert...",
-    encoded_content="<mei>...</mei>",
-    guides_content="Remember to consider key signatures...",
-    temperature=0.7,
-    max_tokens=500
-)
-```
-
-**Methods:**
-
-#### `build_prompt_input()`
-
-**Parameters:**
-- `question_text` (str): The question to ask
-- `base_format_prompt` (str): Format-specific instructions
-- `encoded_content` (str): Musical data in specified format
-- `guides_content` (str): Additional context and guides
-- `temperature` (float): Sampling temperature
-- `max_tokens` (int, optional): Maximum response tokens
-
-**Returns:**
-- `PromptInput`: Complete prompt ready for LLM
+Key parameters: `system_prompt`, `format_specific_user_prompt`, `encoded_data`, `guides`, `question_prompt`, `ordering`, `section_headers`, `temperature`.
 
 ## Model Implementations
 
@@ -178,10 +138,11 @@ response = model.query(prompt_input)
 ```python
 from llm_music_theory.utils.path_utils import (
     find_project_root,
-    list_questions,
     list_datatypes,
+    list_questions,
     find_encoded_file,
-    find_question_file
+    find_question_file,
+    get_output_path,
 )
 ```
 
@@ -200,13 +161,7 @@ Find the project root directory by looking for `pyproject.toml`.
 
 #### `list_questions(questions_dir)`
 
-List all available question IDs.
-
-**Parameters:**
-- `questions_dir` (Path): Directory containing question files
-
-**Returns:**
-- `List[str]`: List of question IDs (e.g., ["Q1a", "Q1b", "Q2a"])
+Return legacy per‑question prompt stems (legacy datasets only). New single‑prompt datasets may return empty list.
 
 #### `list_datatypes(encoded_dir)`
 
@@ -236,6 +191,16 @@ Locate encoded music file for a question and format.
 - `ValueError`: If datatype is not supported
 
 #### `find_question_file(question_number, context, questions_dir, required=True)`
+#### `get_output_path(outputs_dir, model_name, file_id, datatype, context, dataset=None, ext=".txt", question_number=None)`
+
+Build the canonical output path. Pattern:
+
+```
+outputs/<Model>/<dataset>__<file_id>_<datatype>_<context|nocontext>.txt
+```
+Dataset prefix omitted if `dataset` is None for backward compatibility.
+
+Returns `Path`.
 
 Locate question prompt file.
 
@@ -363,7 +328,7 @@ from llm_music_theory.utils.path_utils import list_questions, list_datatypes
 # Get available data
 questions = list_questions(base_dirs["questions"])
 datatypes = list_datatypes(base_dirs["encoded"])
-models = ["ChatGPT", "Claude", "DeepSeek"]
+models = ["chatgpt", "claude", "deepseek"]
 
 # Process all combinations
 for model_name in models:

@@ -2,7 +2,7 @@
 
 ## System Overview
 
-The LLM-MusicTheory package is designed as a modular evaluation framework for testing Large Language Models on music theory tasks. The architecture follows clean code principles with clear separation of concerns.
+The LLM-MusicTheory package is a modular evaluation framework for testing Large Language Models on music theory tasks. The architecture emphasizes small focused modules, backward compatibility for legacy datasets, and explicit prompt assembly ordering for new datasets.
 
 ## High-Level Architecture
 
@@ -44,7 +44,7 @@ The LLM-MusicTheory package is designed as a modular evaluation framework for te
 
 **Purpose**: Business logic and orchestration
 
-- **`runner.py`**: Main execution engine (`PromptRunner` class)
+- **`runner.py`**: Main execution engine (`PromptRunner` class) – now prefers `file_id` with legacy `question_number` alias
 - **`dispatcher.py`**: Model selection and instantiation
 
 **Key Responsibilities**:
@@ -71,7 +71,7 @@ The LLM-MusicTheory package is designed as a modular evaluation framework for te
 
 **Purpose**: Prompt construction and management
 
-- **`prompt_builder.py`**: Dynamic prompt assembly
+- **`prompt_builder.py`**: Deterministic prompt assembly (supports custom ordering for new datasets)
 - **`base/`**: Format-specific base prompts
 
 **Key Responsibilities**:
@@ -105,7 +105,7 @@ The LLM-MusicTheory package is designed as a modular evaluation framework for te
 ### 1. Request Flow
 
 ```
-CLI Input → Validation → Runner → Model → Response → Storage
+CLI Input → Validation → Runner → PromptBuilder → Model → Response → Persistence
     ↓           ↓           ↓        ↓         ↓        ↓
 Arguments   Parameters   Prompt   API Call  Result   File
 ```
@@ -113,7 +113,7 @@ Arguments   Parameters   Prompt   API Call  Result   File
 ### 2. Prompt Assembly Flow
 
 ```
-Question + Format + Context → PromptBuilder → Final Prompt
+Question/File Id + Format + Context Guides → PromptBuilder (ordered sections) → Final PromptInput
     ↓         ↓        ↓            ↓             ↓
  Q1b.txt + mei + guides → Template Processing → LLM Input
 ```
@@ -141,10 +141,14 @@ class Claude(LLMInterface): ...
 The `PromptBuilder` constructs complex prompts from multiple components:
 
 ```python
-prompt = PromptBuilder(
-    question_number="Q1b",
-    datatype="mei", 
-    context=True
+prompt_input = PromptBuilder(
+    system_prompt=system_txt,
+    format_specific_user_prompt=base_format_txt,
+    encoded_data=mei_source,
+    guides=[guide1, guide2],
+    question_prompt=task_text,
+    ordering=["question_prompt","guides","format_prompt","encoded_data"],  # new dataset order
+    temperature=0.7,
 ).build()
 ```
 
@@ -153,7 +157,7 @@ prompt = PromptBuilder(
 The dispatcher creates model instances based on string identifiers:
 
 ```python
-model = get_llm("ChatGPT")  # Returns ChatGPT instance
+model = get_llm("chatgpt")  # Case-insensitive / alias tolerant
 ```
 
 ## Configuration Management
@@ -166,17 +170,17 @@ model = get_llm("ChatGPT")  # Returns ChatGPT instance
 
 ### Settings Hierarchy
 
-1. Command-line arguments (highest priority)
-2. Environment variables
-3. Default values (lowest priority)
+1. CLI arguments (highest)
+2. Environment variables / settings module
+3. Defaults baked into constructors (lowest)
 
 ## Error Handling Strategy
 
 ### 1. Graceful Degradation
 
-- Missing files: Continue with available data
-- API failures: Retry with exponential backoff
-- Invalid responses: Log and continue
+-- Missing optional files: skip gracefully
+-- Missing required files: raise early & clearly
+-- API failures: surfaced by model layer (retry logic may be added later)
 
 ### 2. Error Categories
 
@@ -202,24 +206,24 @@ model = get_llm("ChatGPT")  # Returns ChatGPT instance
 
 ### Test Data Strategy
 
-- **Synthetic Data**: Generated test files for unit tests
-- **Real Data**: Subset of actual evaluation data
-- **Mock Responses**: Simulated LLM responses
+-- **Synthetic Data**: Generated fixtures (temporary project structures)
+-- **Legacy Sample Data**: Minimal `RCM6` subset for compatibility tests
+-- **Mock Responses**: Model stubs + monkeypatched SDKs
 
 ## Scalability Considerations
 
 ### Current Limitations
 
-- **Sequential Processing**: One request at a time
-- **Memory Usage**: Loads all prompts into memory
-- **File I/O**: Synchronous file operations
+-- Sequential processing (no concurrency)
+-- Full encoded file loaded into memory
+-- Synchronous file I/O
 
 ### Future Improvements
 
-- **Async Processing**: Concurrent API calls
-- **Streaming**: Large file handling
-- **Caching**: Response caching for repeated evaluations
-- **Database**: Replace file-based storage
+-- Optional async/parallel request orchestration
+-- Streaming for large musical sources
+-- On-disk or in-memory prompt+response caching
+-- Pluggable persistence (database / vector store)
 
 ## Extension Points
 

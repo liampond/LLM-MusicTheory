@@ -45,9 +45,9 @@ Test a specific question with one model:
 
 ```bash
 poetry run python -m llm_music_theory.cli.run_single \
-    --question Q1b \
+    --file-id Q1b \
     --datatype mei \
-    --model ChatGPT \
+    --model chatgpt \
     --context \
     --temperature 0.0
 ```
@@ -58,9 +58,9 @@ Evaluate multiple questions across different models and formats:
 
 ```bash
 poetry run python -m llm_music_theory.cli.run_batch \
-    --questions Q1b Q2a \
+    --questions Q1a Q1b \
     --datatypes mei musicxml \
-    --models ChatGPT Claude \
+    --models chatgpt claude \
     --context \
     --temperature 0.7
 ```
@@ -71,7 +71,7 @@ poetry run python -m llm_music_theory.cli.run_batch \
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--question` | Question ID (e.g., Q1b) | Required |
+| `--file-id` / `--question` | File/question ID (legacy alias supported) | Required |
 | `--datatype` | Music format (mei, musicxml, abc, humdrum) | Required |
 | `--model` | LLM model name | Required |
 | `--context` | Include context in prompts | False |
@@ -84,7 +84,7 @@ poetry run python -m llm_music_theory.cli.run_batch \
 ### List Available Options
 
 ```bash
-# List available questions
+# List available questions (legacy datasets)
 poetry run python -m llm_music_theory.cli.run_single --list-questions
 
 # List available data types
@@ -101,10 +101,10 @@ Results are saved in the `outputs/` directory with the following structure:
 ```
 outputs/
 ├── ChatGPT/
-│   ├── Q1b_mei_context.txt
-│   └── Q1b_mei_nocontext.txt
+│   ├── fux-counterpoint__Q1b_mei_context.txt
+│   └── fux-counterpoint__Q1b_mei_context.input.json
 ├── Claude/
-│   └── Q1b_musicxml_context.txt
+│   └── fux-counterpoint__Q1b_musicxml_context.txt
 └── DeepSeek/
     └── Q2a_abc_nocontext.txt
 ```
@@ -113,10 +113,10 @@ outputs/
 
 | Model | Provider | Configuration |
 |-------|----------|---------------|
-| ChatGPT | OpenAI | Requires `OPENAI_API_KEY` |
-| Claude | Anthropic | Requires `ANTHROPIC_API_KEY` |
-| Gemini | Google | Requires `GOOGLE_API_KEY` |
-| DeepSeek | DeepSeek | Requires `DEEPSEEK_API_KEY` |
+| chatgpt | OpenAI | Requires `OPENAI_API_KEY` |
+| claude | Anthropic | Requires `ANTHROPIC_API_KEY` |
+| gemini | Google | Requires `GOOGLE_API_KEY` |
+| deepseek | DeepSeek | Requires `DEEPSEEK_API_KEY` |
 
 ## Supported Music Formats
 
@@ -141,9 +141,9 @@ Run with verbose output for debugging:
 
 ```bash
 poetry run python -m llm_music_theory.cli.run_single \
-    --question Q1b \
+    --file-id Q1b \
     --datatype mei \
-    --model ChatGPT \
+    --model chatgpt \
     --verbose
 ```
 
@@ -168,12 +168,11 @@ Different models may respond better to different temperature settings:
 
 ```bash
 poetry run python -m llm_music_theory.cli.run_batch \
-    --questions Q1a Q1b Q2a \
+    --questions Q1a Q1b \
     --datatypes mei musicxml \
-    --models ChatGPT Claude DeepSeek \
+    --models chatgpt claude deepseek \
     --context \
-    --no-context \
-    --temperature 0.0 0.5 1.0
+    --temperature 0.0 0.5 0.9
 ```
 
 This will test all combinations of questions, datatypes, models, context settings, and temperatures.
