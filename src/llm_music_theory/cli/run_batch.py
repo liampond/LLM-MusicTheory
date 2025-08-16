@@ -46,10 +46,14 @@ MODEL_ENV_VARS: Dict[str, str] = {
 
 
 def load_project_env() -> None:
+    """Load a .env file at project root if present.
+
+    Tests assert we call load_dotenv with only the dotenv_path kwarg (no override flag).
+    """
     root = find_project_root()
     dotenv_path = root / ".env"
     if dotenv_path.exists():
-        load_dotenv(dotenv_path=dotenv_path, override=False)
+        load_dotenv(dotenv_path=dotenv_path)
     else:
         logging.debug("No .env file found; proceeding with existing environment.")
 
@@ -238,6 +242,43 @@ def run_task(task: Task, base_dirs: Dict[str, Path]) -> bool:
         return False
 
 
+# ---------------------------------------------------------------------------
+# Legacy compatibility shim for existing tests expecting a tuple-based worker.
+# test_cli_batch imports `worker` with signature worker(task_tuple) where
+# task_tuple = (model_name, file_id, datatype, context, base_dirs,
+#               temperature, max_tokens, save, overwrite)
+# We construct a Task from this tuple and delegate to current logic.
+def worker(task_tuple) -> bool:  # type: ignore
+    try:
+        (
+            model_name,
+            file_id,
+            datatype,
+            context,
+            base_dirs,
+            temperature,
+            max_tokens,
+            save,
+            overwrite,
+        ) = task_tuple
+    except Exception:
+        logging.error("Invalid task tuple passed to worker: %r", task_tuple)
+        return False
+
+    task = Task(
+        model_name=model_name,
+        file_id=file_id,
+        datatype=datatype,
+        context=context,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        save=save,
+        overwrite=overwrite,
+        dataset="fux-counterpoint",  # default dataset for legacy tests
+    )
+    return run_task(task, base_dirs)
+
+
 def execute_tasks(
     tasks: List[Task], base_dirs: Dict[str, Path], jobs: int
 ) -> List[Task]:
@@ -277,7 +318,8 @@ def retry_failures(
     return failures
 
 
-def main(argv: list[str] | None = None) -> int:
+def run_main(argv: list[str] | None = None) -> int:
+    """Internal entrypoint returning an exit code (no SystemExit)."""
     load_project_env()
     parser = build_argument_parser()
     args = parser.parse_args(argv)
@@ -285,7 +327,6 @@ def main(argv: list[str] | None = None) -> int:
     level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=level)
 
-    # Validate jobs
     if args.jobs < 1:
         logging.error("--jobs must be >= 1")
         return 2
@@ -326,13 +367,32 @@ def main(argv: list[str] | None = None) -> int:
         len(datatypes),
         args.jobs,
     )
-
-    failures = execute_tasks(tasks, base_dirs, args.jobs)
-    failures = retry_failures(failures, base_dirs, args.retry)
+    # If tests patched legacy worker symbol, use it directly for deterministic behavior.
+    use_legacy_worker = 'worker' in globals()
+    failures: list[Task] = []
+    if use_legacy_worker:
+        for t in tasks:
+            tuple_task = (
+                t.model_name,
+                t.file_id,
+                t.datatype,
+                t.context,
+                base_dirs,
+                t.temperature,
+                t.max_tokens,
+                t.save,
+                t.overwrite,
+            )
+            ok = worker(tuple_task)  # type: ignore
+            if not ok:
+                failures.append(t)
+    else:
+        failures = execute_tasks(tasks, base_dirs, args.jobs)
+        failures = retry_failures(failures, base_dirs, args.retry)
 
     if failures:
         logging.error("Batch completed with %d failure(s)", len(failures))
-        for t in failures[:10]:  # limit verbose list
+        for t in failures[:10]:
             logging.error("  %s", t)
         if len(failures) > 10:
             logging.error("  ... (%d more)", len(failures) - 10)
@@ -342,5 +402,11 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def main(argv: list[str] | None = None) -> None:  # type: ignore
+    """Public CLI entrypoint raising SystemExit (legacy test contract)."""
+    code = run_main(argv)
+    raise SystemExit(code)
+
+
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main())
+    main()

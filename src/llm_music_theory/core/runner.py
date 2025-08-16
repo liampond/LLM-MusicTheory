@@ -1,14 +1,24 @@
 """PromptRunner orchestrates prompt assembly and LLM querying.
 
-Refactored (Aug 2025) to support new dataset layout (e.g. fux-counterpoint)
-while retaining backwards compatibility with legacy RCM style tests & code.
+Responsibilities:
+    * Load the appropriate system/base format prompts, encoded data, guides, and question text.
+    * Build a `PromptInput` via `PromptBuilder` with dataset‑specific ordering.
+    * Invoke the provided model (`LLMInterface`) and optionally persist response + metadata bundle.
+
+Non‑goals:
+    * Network retries / rate limiting (leave to model wrapper).
+    * Complex caching (could be layered later if needed).
+
+Backward compatibility:
+    * Retains support for legacy parameter names (`question_number`, `exam_date`).
+    * Maintains existing attribute names used by tests (e.g. `question_number`).
 """
 
 import logging
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from llm_music_theory.models.base import LLMInterface, PromptInput
 from llm_music_theory.prompts.prompt_builder import PromptBuilder
@@ -21,6 +31,11 @@ from llm_music_theory.utils.path_utils import (
 
 
 class PromptRunner:
+    """Build and execute a single prompt run.
+
+    Instances are lightweight; create a new runner per prompt.
+    """
+
     _EXT_MAP = {"mei": ".mei", "musicxml": ".musicxml", "abc": ".abc", "humdrum": ".krn"}
 
     def __init__(
@@ -39,53 +54,60 @@ class PromptRunner:
         exam_date: Optional[str] = None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
-        self.model = model
+        self.model: LLMInterface = model
         # Accept both new (file_id) and legacy (question_number)
-        self.file_id = file_id or question_number
+        self.file_id: Optional[str] = file_id or question_number
         if not self.file_id:
             raise ValueError("file_id (or legacy question_number) is required")
         # Maintain legacy attribute names for tests
-        self.question_number = self.file_id
-        self.datatype = datatype.lower()
-        self.context = context
+        self.question_number: str = self.file_id
+        self.datatype: str = datatype.lower().strip()
+        if self.datatype not in self._EXT_MAP:
+            self.logger.warning("Unrecognized datatype '%s'; proceeding anyway", self.datatype)
+        self.context: bool = bool(context)
         # exam_date kept for backward compatibility; dataset is new
-        self.exam_date = exam_date or ""
-        self.dataset = dataset
-        self.base_dirs = base_dirs or {}
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.save = save
+        self.exam_date: str = exam_date or ""
+        self.dataset: str = dataset
+        self.base_dirs: Dict[str, Path] = base_dirs or {}
+        self.temperature: float = float(temperature)
+        if not (0.0 <= self.temperature <= 1.0):  # soft validation
+            self.logger.warning("Temperature %.3f outside [0,1]; model may clamp internally", self.temperature)
+        self.max_tokens: Optional[int] = max_tokens
+        self.save: bool = bool(save)
 
+        self.save_to: Optional[Path] = None
         if self.save:
-            self.save_to = get_output_path(
-                outputs_dir=self.base_dirs.get("outputs", Path("outputs")),
-                model_name=type(model).__name__,
-                file_id=self.file_id,
-                datatype=self.datatype,
-                context=self.context,
-                dataset=self.dataset,
-            )
-        else:
-            self.save_to = None
+            try:
+                self.save_to = get_output_path(
+                    outputs_dir=self.base_dirs.get("outputs", Path("outputs")),
+                    model_name=type(model).__name__,
+                    file_id=self.file_id,
+                    datatype=self.datatype,
+                    context=self.context,
+                    dataset=self.dataset,
+                )
+            except Exception as e:  # pragma: no cover (rare path issues)
+                self.logger.error("Failed to compute output path: %s", e)
+                self.save_to = None
 
     # Public API -----------------------------------------------------------------
     def run(self) -> str:
+        """Execute the prompt build + model query pipeline.
+
+        Returns
+        -------
+        str
+            Raw response text from the underlying model.
+        """
         prompt_input = self._build_prompt_input()
-        # Use f-string so tests that inspect raw log message see substituted values
         self.logger.info(
             f"Running {self.file_id} [{self.datatype}] dataset={self.dataset} context={self.context} temp={self.temperature}"
         )
         response = self.model.query(prompt_input)
+        # Use f-string to match test expectation that the interpolated id appears directly
         self.logger.info(f"Received response for {self.file_id}")
         if self.save and self.save_to:
-            # Persist response
-            self._save_response(response)
-            # Persist accompanying input bundle (prompts, params, sources)
-            try:
-                self._save_input_bundle(prompt_input)
-            except Exception as e:
-                # Do not fail the main run if metadata persistence fails
-                self.logger.warning("Failed to write input bundle: %s", e)
+            self._persist_artifacts(response, prompt_input)
         return response
 
     # Internal helpers -----------------------------------------------------------
@@ -110,10 +132,10 @@ class PromptRunner:
         section_headers = None
         if self.dataset == "fux-counterpoint":
             ordering = [
-                "question_prompt",   # prompt.md baseline instructions
-                "guides",            # contextual guide(s)
-                "format_prompt",     # base_format instructions
-                "encoded_data",      # the score / encoded file
+                "question_prompt",  # prompt.md baseline instructions
+                "guides",  # contextual guide(s)
+                "format_prompt",  # base_format instructions
+                "encoded_data",  # the score / encoded file
             ]
             section_headers = {
                 "question_prompt": "Task",
@@ -195,6 +217,17 @@ class PromptRunner:
         self.save_to.parent.mkdir(parents=True, exist_ok=True)
         self.save_to.write_text(response, encoding="utf-8")
         self.logger.info("Saved response to %s", self.save_to)
+
+    def _persist_artifacts(self, response: str, prompt_input: PromptInput) -> None:
+        """Persist response & input bundle (best effort)."""
+        try:
+            self._save_response(response)
+        except Exception as e:  # pragma: no cover
+            self.logger.warning("Failed to save response: %s", e)
+        try:
+            self._save_input_bundle(prompt_input)
+        except Exception as e:  # pragma: no cover
+            self.logger.warning("Failed to write input bundle: %s", e)
 
     # ------------------------------------------------------------------
     def _save_input_bundle(self, prompt_input: PromptInput) -> None:
