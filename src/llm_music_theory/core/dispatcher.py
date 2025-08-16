@@ -1,46 +1,118 @@
-"""Model dispatcher with lazy imports.
+"""Model dispatcher with lazy imports and alias support.
 
-Avoid importing third-party SDKs at module import time by importing model
-wrappers only when requested. This keeps test collection lightweight and allows
-running without optional dependencies installed.
+Design goals:
+  * Avoid importing provider SDKs until needed (speedy test collection).
+  * Provide clear, actionable error messages when optional extras missing.
+  * Support convenient provider aliases (e.g. "openai" -> "chatgpt").
+  * Return a fresh instance each call (no hidden singletons) for configurability.
+
+Public surface:
+  * get_llm(name) -> LLMInterface instance
+  * list_available_models() -> list[str] of canonical model keys
 """
+
+from __future__ import annotations
+
+from typing import Callable, Dict, List
 
 from llm_music_theory.models.base import LLMInterface
 
-def get_llm(model_name: str) -> LLMInterface:
-    """Return an instance of the LLM wrapper class for the given model string.
+# Canonical model keys recognised by the project.
+_CANONICAL: List[str] = ["chatgpt", "gemini", "claude", "deepseek"]
 
-    Supported values: 'chatgpt', 'gemini', 'claude', 'deepseek'
+# Aliases map (lowercase) -> canonical key.
+_ALIASES: Dict[str, str] = {
+    "openai": "chatgpt",
+    "gpt": "chatgpt",  # user convenience
+    "anthropic": "claude",
+    "google": "gemini",
+    "deepseek-chat": "deepseek",  # possible variant
+}
+
+# Factory registry storing zero-arg callables that instantiate each model wrapper.
+# Using lambdas keeps imports lazy.
+_REGISTRY: Dict[str, Callable[[], LLMInterface]] = {
+    "chatgpt": lambda: __import__(
+        "llm_music_theory.models.chatgpt", fromlist=["ChatGPTModel"]
+    ).ChatGPTModel(),
+    "gemini": lambda: _load_optional(
+        module="llm_music_theory.models.gemini",
+        cls="GeminiModel",
+        extra="google",
+        human_name="Google Gemini",
+    ),
+    "claude": lambda: _load_optional(
+        module="llm_music_theory.models.claude",
+        cls="ClaudeModel",
+        extra="anthropic",
+        human_name="Anthropic Claude",
+    ),
+    "deepseek": lambda: _load_optional(
+        module="llm_music_theory.models.deepseek",
+        cls="DeepSeekModel",
+        extra="deepseek",
+        human_name="DeepSeek",
+    ),
+}
+
+
+def _load_optional(module: str, cls: str, extra: str, human_name: str) -> LLMInterface:
+    """Helper to lazily import optional model wrappers.
+
+    Raises a RuntimeError with installation guidance if the import fails.
     """
-    name = str(model_name).lower()
+    try:
+        mod = __import__(module, fromlist=[cls])
+        return getattr(mod, cls)()
+    except ImportError as e:  # pragma: no cover (depends on env without extra)
+        raise RuntimeError(
+            f"{human_name} support not installed. Install extras with: 'poetry install --with {extra}'"
+        ) from e
 
-    if name == "chatgpt":
-        # OpenAI dependency kept mandatory to satisfy default tests
-        from llm_music_theory.models.chatgpt import ChatGPTModel
-        return ChatGPTModel()
-    elif name == "gemini":
-        try:
-            from llm_music_theory.models.gemini import GeminiModel
-        except ImportError as e:
-            raise RuntimeError(
-                "Google Gemini support not installed. Install extras with: 'poetry install --with google'"
-            ) from e
-        return GeminiModel()
-    elif name == "claude":
-        try:
-            from llm_music_theory.models.claude import ClaudeModel
-        except ImportError as e:
-            raise RuntimeError(
-                "Anthropic Claude support not installed. Install extras with: 'poetry install --with anthropic'"
-            ) from e
-        return ClaudeModel()
-    elif name == "deepseek":
-        try:
-            from llm_music_theory.models.deepseek import DeepSeekModel
-        except ImportError as e:
-            raise RuntimeError(
-                "DeepSeek support not installed. Install extras with: 'poetry install --with deepseek'"
-            ) from e
-        return DeepSeekModel()
-    else:
-        raise ValueError(f"Unknown model: {name}")
+
+def _normalise(name: str) -> str:
+    return name.strip().lower()
+
+
+def list_available_models() -> List[str]:
+    """Return the list of canonical model identifiers."""
+    return list(_CANONICAL)
+
+
+def get_llm(model_name: str) -> LLMInterface:
+    """Instantiate an LLM wrapper by name or alias.
+
+    Parameters
+    ----------
+    model_name: str
+        Canonical name or supported alias (case-insensitive).
+
+    Returns
+    -------
+    LLMInterface
+        Fresh instance of the requested model wrapper.
+
+    Raises
+    ------
+    TypeError
+        If model_name is not a string.
+    ValueError
+        If the name/alias is unknown.
+    RuntimeError
+        If an optional model is requested but the extra dependency is missing.
+    """
+    if not isinstance(model_name, str):  # keep tests tolerant
+        raise TypeError("model_name must be a string")
+
+    name = _normalise(model_name)
+    # Resolve aliases
+    canonical = _ALIASES.get(name, name)
+
+    if canonical not in _REGISTRY:
+        # Provide helpful hint with known names
+        raise ValueError(
+            f"Unknown model: '{model_name}'. Supported: {', '.join(_CANONICAL)}."
+        )
+
+    # Call factory for a fresh instance
+    return _REGISTRY[canonical]()
