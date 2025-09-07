@@ -27,6 +27,7 @@ from llm_music_theory.core.dispatcher import get_llm
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.utils.path_utils import (
     find_project_root,
+    find_encoded_file,
     list_file_ids,
     list_datatypes,
     list_guides,
@@ -282,9 +283,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # Existence check for encoded file (after logging so user sees parameters)
-    encoded_file = base_dirs["encoded"] / f"{args.file}.{args.datatype}"
-    if not encoded_file.exists():
-        logging.error("Encoded source file not found: %s", encoded_file)
+    datatype_dir = base_dirs["encoded"] / args.datatype
+    try:
+        encoded_file = find_encoded_file(args.file, args.datatype, datatype_dir, required=True)
+    except FileNotFoundError as e:
+        logging.error("Encoded source file not found: %s", e)
         return 2
 
     try:

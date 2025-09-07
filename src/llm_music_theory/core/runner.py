@@ -79,6 +79,8 @@ class PromptRunner:
         self.save_to: Optional[Path] = None
         if self.save:
             try:
+                # Use the same extension as the input encoded file
+                ext = f".{self.datatype}"
                 self.save_to = get_output_path(
                     outputs_dir=self.base_dirs.get("outputs", Path("outputs")),
                     model_name=type(model).__name__,
@@ -86,6 +88,7 @@ class PromptRunner:
                     datatype=self.datatype,
                     context=self.context,
                     dataset=self.dataset,
+                    ext=ext,
                 )
             except Exception as e:  # pragma: no cover (rare path issues)
                 self.logger.error("Failed to compute output path: %s", e)
@@ -244,7 +247,7 @@ class PromptRunner:
         """
         if not self.save_to:
             return
-        bundle_path = self.save_to.with_suffix("")  # strip .txt
+        bundle_path = self.save_to.with_suffix("")  # strip extension (e.g., .musicxml, .mei, etc.)
         # keep original name, append .input.json
         bundle_path = bundle_path.parent / (bundle_path.name + ".input.json")
 
