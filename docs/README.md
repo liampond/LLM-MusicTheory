@@ -1,18 +1,59 @@
-# 📚 Documentation
+# LLM-MusicTheory Documentation
 
-Authoritative reference for the LLM‑MusicTheory toolkit. This folder focuses on:
-* How the system is structured (architecture)
-* How to use & extend it (user + API guides)
-* Development & contribution practices
+Comprehensive documentation for the LLM-MusicTheory research framework.
 
-## 🎯 Quick Navigation
+## Overview
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| **[../README.md](../README.md)** | Main project overview | All users |
-| **[Architecture](#-architecture)** | System design | Developers |
-| **[API Reference](#-api-reference)** | Key classes & functions | Developers |
-| **[Best Practices](#-best-practices)** | Usage guidelines | All users |
+LLM-MusicTheory is a research framework for studying how Large Language Models (LLMs) understand and analyze music theory concepts. The system supports multiple LLM providers, various music encoding formats, and provides both command-line and programmatic interfaces for conducting systematic studies.
+
+## Documentation Structure
+
+### 🚀 Getting Started
+Perfect for new users who want to quickly get up and running.
+
+- **[Installation Guide](installation.md)** - Setup instructions and requirements
+- **[Quick Start](quickstart.md)** - Your first music theory analysis in minutes
+- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
+
+### 📖 User Guide  
+Detailed information for regular users and researchers.
+
+- **[Configuration](configuration.md)** - Customize the system for your needs
+- **[Adding Questions](adding-questions.md)** - Create your own music theory questions
+
+### 🔬 Research
+Resources for academic researchers conducting empirical studies.
+
+- **[Research Guide](research.md)** - Academic research methodology and best practices
+
+### 💻 API Reference
+Complete programming interface documentation.
+
+- **[API Documentation](api-reference.md)** - Full API reference with examples
+
+### 📋 Examples
+Practical examples for common use cases.
+
+- **[Usage Examples](examples.md)** - Real-world usage scenarios
+
+### 🛠️ Development
+Information for contributors and developers.
+
+- **[Development Guide](development.md)** - Contributing to the project
+
+## Quick Navigation
+
+### For Educators
+- [Quick Start](quickstart.md) → [Adding Questions](adding-questions.md) → [Examples](examples.md)
+
+### For Researchers  
+- [Installation](installation.md) → [Research Guide](research.md) → [Examples](examples.md)
+
+### For Developers
+- [Development Guide](development.md) → [API Reference](api-reference.md)
+
+### For Integration
+- [API Reference](api-reference.md) → [Examples](examples.md) → [Configuration](configuration.md)
 
 ## 🏗 Architecture
 
@@ -280,7 +321,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 ---
 
-For more information, see the main [README.md](../README.md) or [examples/](../examples/) directory.
+For more information, see the main [README.md](../README.md) or the examples documentation.
 
 ## 📖 Documentation Standards
 
