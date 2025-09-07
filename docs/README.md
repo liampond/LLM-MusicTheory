@@ -11,6 +11,7 @@ LLM-MusicTheory is a research framework for studying how Large Language Models (
 ### 🚀 Getting Started
 Perfect for new users who want to quickly get up and running.
 
+- **[Musicologist's Guide](musicologist-guide.md)** - **START HERE** for music experts with no technical background
 - **[Installation Guide](installation.md)** - Setup instructions and requirements
 - **[Quick Start](quickstart.md)** - Your first music theory analysis in minutes
 - **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
@@ -44,7 +45,7 @@ Information for contributors and developers.
 ## Quick Navigation
 
 ### For Educators
-- [Quick Start](quickstart.md) → [Adding Questions](adding-questions.md) → [Examples](examples.md)
+- [Musicologist's Guide](musicologist-guide.md) → [Adding Questions](adding-questions.md) → [Examples](examples.md)
 
 ### For Researchers  
 - [Installation](installation.md) → [Research Guide](research.md) → [Examples](examples.md)

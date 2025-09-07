@@ -9,18 +9,24 @@ Once you've completed the [installation](installation.md), let's run a music the
 ### Single Question Analysis
 
 ```bash
-# Analyze a specific question with context
-python -m llm_music_theory.cli.run_single \
-  --question Q1b \
-  --encoded_type musicxml \
-  --model gemini-2.0-flash-exp \
-  --context
+# Analyze counterpoint composition (default dataset)
+poetry run python -m llm_music_theory.cli.run_single \
+  --file Fux_CantusFirmus \
+  --datatype musicxml \
+  --model gemini
 
-# Without musical context
-python -m llm_music_theory.cli.run_single \
-  --question Q1b \
-  --model gpt-4o \
-  --no-context
+# Analyze RCM6 questions with context (experimental - may have path issues)
+poetry run python -m llm_music_theory.cli.run_single \
+  --file Q1b \
+  --datatype musicxml \
+  --model gemini \
+  --context \
+  --dataset RCM6
+
+# Simple text-only counterpoint analysis
+poetry run python -m llm_music_theory.cli.run_single \
+  --file Fux_CantusFirmus \
+  --model chatgpt
 ```
 
 ### Understanding the Output
@@ -48,13 +54,18 @@ output/
 ## Available Questions
 
 Current questions in the database:
-- `Q1b`: Counterpoint analysis question
+- **Fux-Counterpoint dataset**: `Fux_CantusFirmus` (counterpoint composition)
+- **RCM6 dataset**: `Q1b` (analysis question - experimental path support)
 
 ## Supported Models
 
-- **Google Gemini**: `gemini-2.0-flash-exp`, `gemini-1.5-pro`
-- **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `o1-preview`, `o1-mini`
-- **Anthropic**: `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022`
+Available model choices (use provider aliases for simplicity):
+- **Google Gemini**: `gemini`
+- **OpenAI ChatGPT**: `chatgpt`  
+- **Anthropic Claude**: `claude`
+- **DeepSeek**: `deepseek`
+
+*Note: Specific model versions (like `gpt-4o`) can be specified with `--model-name` parameter*
 
 ## Supported Music Formats
 
@@ -67,13 +78,12 @@ Current questions in the database:
 
 ### Compare Models on Same Question
 ```bash
-# Test multiple models on the same question
-for model in "gemini-2.0-flash-exp" "gpt-4o" "claude-3-5-sonnet-20241022"; do
-  python -m llm_music_theory.cli.run_single \
-    --question Q1b \
-    --encoded_type musicxml \
-    --model "$model" \
-    --context
+# Test multiple models on counterpoint composition
+for model in "gemini" "chatgpt" "claude"; do
+  poetry run python -m llm_music_theory.cli.run_single \
+    --file Fux_CantusFirmus \
+    --datatype musicxml \
+    --model "$model"
 done
 ```
 
@@ -81,22 +91,20 @@ done
 ```bash
 # Compare how models handle different music formats
 for format in "musicxml" "mei" "abc" "humdrum"; do
-  python -m llm_music_theory.cli.run_single \
-    --question Q1b \
-    --encoded_type "$format" \
-    --model gemini-2.0-flash-exp \
-    --context
+  poetry run python -m llm_music_theory.cli.run_single \
+    --file Fux_CantusFirmus \
+    --datatype "$format" \
+    --model gemini
 done
 ```
 
 ### Batch Processing
 ```bash
-# Run multiple questions (when available)
-python -m llm_music_theory.cli.run_batch \
-  --questions Q1b \
-  --encoded_type musicxml \
-  --model gemini-2.0-flash-exp \
-  --context
+# Use the batch runner for multiple files (when available)
+poetry run python -m llm_music_theory.cli.run_batch \
+  --files Fux_CantusFirmus \
+  --datatype musicxml \
+  --model gemini
 ```
 
 ## Next Steps
