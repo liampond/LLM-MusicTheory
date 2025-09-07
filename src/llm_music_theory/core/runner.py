@@ -56,8 +56,9 @@ class PromptRunner:
         self.logger = logging.getLogger(__name__)
         self.model: LLMInterface = model
         # Accept both new (file_id) and legacy (question_number)
-        self.file_id: Optional[str] = file_id or question_number
+        self.file_id: str = file_id or question_number or ""
         if not self.file_id:
+            raise ValueError("file_id (or legacy question_number) is required")
             raise ValueError("file_id (or legacy question_number) is required")
         # Maintain legacy attribute names for tests
         self.question_number: str = self.file_id
@@ -161,10 +162,11 @@ class PromptRunner:
         return prompt_input
 
     def _load_system_prompt(self) -> str:
-        system_file = self.base_dirs.get("prompts", Path("")) / "base" / "system_prompt.txt"
-        if system_file.exists():
-            return load_text_file(system_file)
-        return "You are a helpful music theory assistant."
+        """Return empty system prompt since we don't use system_prompt.txt files.
+        
+        Format-specific prompts in base_{datatype}.md handle all necessary instructions.
+        """
+        return ""
 
     def _load_base_format_prompt(self) -> str:
         base_dir = self.base_dirs.get("prompts", Path("")) / "base"
@@ -189,6 +191,8 @@ class PromptRunner:
         # Plain legacy: encoded/<datatype>/<file_id>.<ext>
         legacy_plain = self.base_dirs.get("encoded", Path("encoded")) / self.datatype
         path = find_encoded_file(self.file_id, self.datatype, legacy_plain, required=True)
+        if not path:
+            raise FileNotFoundError(f"Encoded file not found: {self.file_id}.{self._EXT_MAP.get(self.datatype, '')} in {legacy_plain}")
         return load_text_file(path)
 
     def _load_question(self) -> str:
@@ -200,6 +204,8 @@ class PromptRunner:
         suffix = "context" if self.context else "no_context"
         legacy_dir = self.base_dirs.get("prompts", Path("")) / "questions" / suffix / self.datatype
         path = find_question_file(self.file_id, self.context, legacy_dir, required=True)
+        if not path:
+            raise FileNotFoundError(f"Question file not found for {self.file_id} in {legacy_dir}")
         return load_text_file(path)
 
     def _load_guides(self) -> List[str]:

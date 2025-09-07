@@ -85,15 +85,10 @@ class TestComprehensivePromptGeneration:
             save=False
         )
         
-        try:
-            system_prompt = runner._load_system_prompt()
-            assert len(system_prompt) > 0
-            assert isinstance(system_prompt, str)
-            # System prompt should contain music theory instructions
-            assert any(word in system_prompt.lower() for word in 
-                      ['music', 'theory', 'analyze', 'analysis'])
-        except FileNotFoundError:
-            pytest.skip("System prompt file not available")
+        system_prompt = runner._load_system_prompt()
+        # System prompt is now empty as we use format-specific prompts only
+        assert isinstance(system_prompt, str)
+        assert system_prompt == ""  # Should be empty string
 
     def test_base_format_prompts(self, project_structure):
         """Test that base format prompts exist for all datatypes."""
@@ -444,11 +439,8 @@ class TestComprehensivePromptGeneration:
                 assert prompt_data['max_tokens'] == max_tokens
                 
             except FileNotFoundError:
-                # Try a different question if Q1a doesn't exist for this exam
+                # Skip if files not available for this exam/question
                 continue
-                
-            except FileNotFoundError:
-                continue  # Skip if files not available
         
         # Should have tested at least one case
         assert len(mock_llm.captured_prompts) > 0
