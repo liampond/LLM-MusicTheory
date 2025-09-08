@@ -160,15 +160,47 @@ def list_datatypes(encoded_dir: Path) -> List[str]:
 
 
 def list_guides(guides_dir: Path) -> List[str]:
-    """Return stems of all guide ``.txt`` files (non‑recursive)."""
+    """Return stems of all guide ``.txt`` and ``.md`` files (non‑recursive)."""
     if not guides_dir.exists():
         return []
-    return sorted([f.stem for f in guides_dir.glob("*.txt") if f.is_file()])
+    guides = []
+    for ext in ["*.txt", "*.md"]:
+        guides.extend([f.stem for f in guides_dir.glob(ext) if f.is_file()])
+    return sorted(guides)
 
 
 def ensure_dir(path: Path) -> None:
     """Create directory (and parents) if missing (idempotent)."""
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _get_next_run_number(base_path: Path) -> int:
+    """Find the next available run number for a given base path."""
+    if not base_path.parent.exists():
+        return 1
+    
+    # Extract the base filename pattern (everything before the extension)
+    base_name = base_path.stem
+    extension = base_path.suffix
+    
+    # Look for existing files with pattern: base_name_N.extension
+    existing_numbers = []
+    for existing_file in base_path.parent.iterdir():
+        if existing_file.is_file() and existing_file.suffix == extension:
+            # Check if it matches our pattern
+            name = existing_file.stem
+            if name == base_name:
+                # This is the base file (no number), treat as run 1
+                existing_numbers.append(1)
+            elif name.startswith(base_name + "_") and name[len(base_name + "_"):].isdigit():
+                # This has a number suffix
+                number = int(name[len(base_name + "_"):])
+                existing_numbers.append(number)
+    
+    if not existing_numbers:
+        return 1
+    
+    return max(existing_numbers) + 1
 
 
 def get_output_path(
@@ -177,21 +209,63 @@ def get_output_path(
     file_id: Optional[str] = None,
     datatype: str = "mei",
     context: bool = False,
+    guide: Optional[str] = None,
     dataset: Optional[str] = None,
     ext: str = ".txt",
     question_number: Optional[str] = None,
 ) -> Path:
-    """Return path for model output file.
+    """Return path for model output file with folder-based organization.
 
-    Pattern: ``outputs/<Model>/<dataset>_<file_id>_<datatype>_<context|nocontext><ext>``
-    (dataset prefix omitted if not provided for backward compatibility).
+    Structure: ``outputs/<dataset>/<model>/[context|no-context]/[<guide>/]<file_id>_N<ext>``
+    Only creates directories when they're actually needed.
     """
     fid = file_id or question_number
     if not fid:
         raise ValueError("file_id (or legacy question_number) is required for output path")
-    context_flag = "context" if context else "nocontext"
-    dataset_prefix = f"{dataset}_" if dataset else ""
-    filename = f"{dataset_prefix}{fid}_{datatype}_{context_flag}{ext}"
-    model_folder = outputs_dir / model_name
-    ensure_dir(model_folder)
-    return model_folder / filename
+    
+    if dataset:
+        # New structure: outputs/dataset/model/context-folder/[guide-folder/]filename
+        model_folder = outputs_dir / dataset / model_name
+        
+        # Create context-based subfolder
+        if context:
+            context_folder = model_folder / "context"
+            if guide:
+                # Further organize by guide when one is specified
+                final_folder = context_folder / guide
+            else:
+                # Context enabled but no specific guide (uses all guides)
+                final_folder = context_folder / "all-guides"
+        else:
+            final_folder = model_folder / "no-context"
+    else:
+        # Legacy structure: outputs/model/filename (with metadata in filename for backward compatibility)
+        context_flag = "context" if context else "nocontext"
+        guide_suffix = f"_{guide}" if guide else ""
+        base_filename = f"{fid}_{datatype}_{context_flag}{guide_suffix}"
+        final_folder = outputs_dir / model_name
+        
+        # Create the base path to check for existing files
+        base_path = final_folder / f"{base_filename}{ext}"
+        ensure_dir(final_folder)
+        
+        # Get the next run number for legacy format
+        run_number = _get_next_run_number(base_path)
+        final_filename = f"{base_filename}_{run_number}{ext}"
+        return final_folder / final_filename
+    
+    # For new structure, create clean filename
+    base_filename = f"{fid}"
+    
+    # Only create the directory when we actually need it
+    ensure_dir(final_folder)
+    
+    # Create the base path to check for existing files
+    base_path = final_folder / f"{base_filename}{ext}"
+    
+    # Get the next run number
+    run_number = _get_next_run_number(base_path)
+    
+    # Create the final filename with run number
+    final_filename = f"{base_filename}_{run_number}{ext}"
+    return final_folder / final_filename
