@@ -228,57 +228,75 @@ class PromptRunner:
         self.logger.info("Saved response to %s", self.save_to)
 
     def _persist_artifacts(self, response: str, prompt_input: PromptInput) -> None:
-        """Persist response & input bundle (best effort)."""
+        """Persist response & prompt file (best effort)."""
         try:
             self._save_response(response)
         except Exception as e:  # pragma: no cover
             self.logger.warning("Failed to save response: %s", e)
         try:
-            self._save_input_bundle(prompt_input)
+            self._save_prompt_file(prompt_input)
         except Exception as e:  # pragma: no cover
-            self.logger.warning("Failed to write input bundle: %s", e)
+            self.logger.warning("Failed to write prompt file: %s", e)
 
     # ------------------------------------------------------------------
-    def _save_input_bundle(self, prompt_input: PromptInput) -> None:
-        """Write a companion JSON file capturing all prompt inputs & metadata.
+    def _save_prompt_file(self, prompt_input: PromptInput) -> None:
+        """Write a companion .prompt.txt file with metadata and complete prompt.
 
-        File naming: <base>.input.json next to the response file.
-        Contains raw components + derived user prompt + config parameters.
+        File naming: <base>.prompt.txt next to the response file.
+        Contains metadata header + system prompt + user prompt with all formatting preserved.
         """
         if not self.save_to:
             return
-        bundle_path = self.save_to.with_suffix("")  # strip extension (e.g., .musicxml, .mei, etc.)
-        # keep original name, append .input.json
-        bundle_path = bundle_path.parent / (bundle_path.name + ".input.json")
+        prompt_path = self.save_to.with_suffix("")  # strip extension
+        prompt_path = prompt_path.parent / (prompt_path.name + ".prompt.txt")
 
+        # Build metadata section
+        timestamp = datetime.now(timezone.utc).isoformat()
         components = getattr(self, "_last_components", {})
-        data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "file_id": self.file_id,
-            "datatype": self.datatype,
-            "dataset": self.dataset,
-            "context": self.context,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "model_class": type(self.model).__name__,
-            "model_name_override": prompt_input.model_name,
-            "save_to": str(self.save_to),
-            "exam_date": self.exam_date,
-            "components": {
-                **components,
-                "user_prompt_compiled": prompt_input.user_prompt,
-                "system_prompt": prompt_input.system_prompt,
-            },
-            "lengths": {
-                k: (len(v) if isinstance(v, str) else sum(len(x) for x in v))
-                for k, v in components.items()
-            },
-        }
-        # Avoid huge accidental binary dumps: if any component extremely large, note it.
-        MAX_INLINE = 200_000  # chars
-        for k, v in list(data["components"].items()):
-            if isinstance(v, str) and len(v) > MAX_INLINE:
-                data["components"][k] = f"<omitted length={len(v)}>"
-        bundle_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        self.logger.info("Saved input bundle to %s", bundle_path)
-        self.input_bundle_path = bundle_path
+        
+        metadata_lines = [
+            "=== MODEL PARAMETERS ===",
+            f"Timestamp: {timestamp}",
+            f"File: {self.file_id}",
+            f"Dataset: {self.dataset}",
+            f"Datatype: {self.datatype}",
+            f"Context: {'context' if self.context else 'nocontext'}",
+            f"Model: {type(self.model).__name__}",
+            f"Temperature: {self.temperature}",
+            f"Max Tokens: {self.max_tokens}",
+            f"Save Path: {self.save_to}",
+        ]
+        
+        if prompt_input.model_name:
+            metadata_lines.append(f"Model Name Override: {prompt_input.model_name}")
+        if self.exam_date:
+            metadata_lines.append(f"Exam Date: {self.exam_date}")
+            
+        # Add component lengths for reference
+        if components:
+            metadata_lines.append("")
+            metadata_lines.append("Component Lengths:")
+            for k, v in components.items():
+                length = len(v) if isinstance(v, str) else sum(len(x) for x in v if x)
+                metadata_lines.append(f"  {k}: {length} chars")
+
+        # Build complete prompt file content
+        content_parts = ["\n".join(metadata_lines)]
+        
+        if prompt_input.system_prompt and prompt_input.system_prompt.strip():
+            content_parts.extend([
+                "",
+                "=== SYSTEM PROMPT ===",
+                prompt_input.system_prompt.strip()
+            ])
+        
+        content_parts.extend([
+            "",
+            "=== USER PROMPT ===",
+            prompt_input.user_prompt
+        ])
+        
+        full_content = "\n".join(content_parts)
+        prompt_path.write_text(full_content, encoding="utf-8")
+        self.logger.info("Saved prompt file to %s", prompt_path)
+        self.prompt_file_path = prompt_path

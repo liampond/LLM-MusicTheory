@@ -183,14 +183,14 @@ def get_output_path(
 ) -> Path:
     """Return path for model output file.
 
-    Pattern: ``outputs/<Model>/<dataset>__<file_id>_<datatype>_<context|nocontext><ext>``
+    Pattern: ``outputs/<Model>/<dataset>_<file_id>_<datatype>_<context|nocontext><ext>``
     (dataset prefix omitted if not provided for backward compatibility).
     """
     fid = file_id or question_number
     if not fid:
         raise ValueError("file_id (or legacy question_number) is required for output path")
     context_flag = "context" if context else "nocontext"
-    dataset_prefix = f"{dataset}__" if dataset else ""
+    dataset_prefix = f"{dataset}_" if dataset else ""
     filename = f"{dataset_prefix}{fid}_{datatype}_{context_flag}{ext}"
     model_folder = outputs_dir / model_name
     ensure_dir(model_folder)
