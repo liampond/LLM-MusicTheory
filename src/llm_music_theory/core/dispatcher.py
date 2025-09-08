@@ -109,3 +109,90 @@ def get_llm(model_name: str) -> LLMInterface:
 
     # Call factory for a fresh instance
     return _REGISTRY[canonical]()
+
+
+def detect_model_provider(model_name: str) -> str:
+    """Detect the model provider based on model name patterns.
+    
+    Args:
+        model_name: The specific model name (e.g., "gpt-4o", "claude-3-sonnet", "gemini-1.5-pro")
+        
+    Returns:
+        The canonical provider name ("chatgpt", "claude", or "gemini")
+        
+    Raises:
+        ValueError: If the model name doesn't match any known patterns
+    """
+    if not isinstance(model_name, str):
+        raise TypeError("model_name must be a string")
+    
+    name_lower = model_name.lower().strip()
+    
+    # OpenAI/ChatGPT patterns
+    if any(pattern in name_lower for pattern in [
+        "gpt-", "gpt3", "gpt4", "gpt-3", "gpt-4", "o1-", "text-davinci", "text-ada", "text-babbage", "text-curie"
+    ]):
+        return "chatgpt"
+    
+    # Anthropic/Claude patterns  
+    if any(pattern in name_lower for pattern in [
+        "claude", "anthropic", "haiku", "sonnet", "opus"
+    ]):
+        return "claude"
+    
+    # Google/Gemini patterns
+    if any(pattern in name_lower for pattern in [
+        "gemini", "bison", "gecko", "palm", "google"
+    ]):
+        return "gemini"
+    
+    # Fallback: raise error with helpful message
+    raise ValueError(
+        f"Cannot detect provider for model '{model_name}'. "
+        f"Supported patterns: OpenAI (gpt-*), Anthropic (claude-*), Google (gemini-*). "
+        f"You can also specify --model explicitly."
+    )
+
+
+def get_llm_with_model_name(model_name: str, provider: str | None = None) -> LLMInterface:
+    """Get an LLM instance with automatic provider detection or explicit provider.
+    
+    Args:
+        model_name: The specific model name (e.g., "gpt-4o", "claude-3-sonnet")
+        provider: Optional explicit provider ("chatgpt", "claude", "gemini"). 
+                 If None, will auto-detect from model_name.
+                 
+    Returns:
+        LLMInterface instance configured with the specified model name
+        
+    Raises:
+        ValueError: If provider cannot be detected or is invalid
+        TypeError: If model_name is not a string
+        RuntimeError: If optional dependencies are missing
+    """
+    if not isinstance(model_name, str):
+        raise TypeError("model_name must be a string")
+    
+    # Use explicit provider or auto-detect
+    if provider is None:
+        provider = detect_model_provider(model_name)
+    else:
+        # Validate explicit provider
+        provider = _normalise(provider)
+        provider = _ALIASES.get(provider, provider)
+        if provider not in _REGISTRY:
+            raise ValueError(
+                f"Unknown provider: '{provider}'. Supported: {', '.join(_CANONICAL)}."
+            )
+    
+    # Get the model instance
+    model = get_llm(provider)
+    
+    # Set the specific model name
+    if hasattr(model, "model_name"):
+        setattr(model, "model_name", model_name)
+    else:
+        # This shouldn't happen with current implementations, but be defensive
+        raise RuntimeError(f"Model wrapper for {provider} doesn't support model_name configuration")
+    
+    return model

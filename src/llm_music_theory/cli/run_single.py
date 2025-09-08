@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Dict, Any
 from dotenv import load_dotenv
 
-from llm_music_theory.core.dispatcher import get_llm
+from llm_music_theory.core.dispatcher import get_llm, get_llm_with_model_name, detect_model_provider
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.utils.path_utils import (
     find_project_root,
@@ -88,12 +88,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
     run_group.add_argument(
         "--model",
         choices=["chatgpt", "claude", "gemini"],
-        help="LLM to use",
+        help="LLM provider to use (optional - will auto-detect from --model-name if not specified)",
     )
     run_group.add_argument(
         "--model-name",
         dest="model_name_override",
-        help="Provider model ID override (e.g. gemini-2.5-pro). If omitted, project default is used.",
+        help="Specific model to use (e.g., 'gpt-4o', 'claude-3-sonnet', 'gemini-1.5-pro'). Provider will be auto-detected.",
     )
     run_group.add_argument(
         "--file",
@@ -241,8 +241,9 @@ def main(argv: list[str] | None = None) -> int:
     # Require these only if not listing
     if not listing_requested(args):
         missing: list[str] = []
-        if not args.model:
-            missing.append("--model")
+        # Either --model or --model-name is required
+        if not args.model and not args.model_name_override:
+            missing.append("--model or --model-name")
         if not args.file:
             missing.append("--file")
         if not args.datatype:
@@ -260,64 +261,71 @@ def main(argv: list[str] | None = None) -> int:
         if missing:
             parser.error(f"The following arguments are required: {', '.join(missing)}")
 
-    # Validate API key if a model is chosen (skip if listing only)
-    if not listing_requested(args) and args.model:
-        validate_api_key(args.model)
-
-    # Dynamically load the requested model now that key sanity check passed
-    model = get_llm(args.model)
-    # If user supplied a provider-specific model name override, try to set attribute
-    if getattr(args, "model_name_override", None):
-        # Most model wrappers expose model_name; set if present
-        if hasattr(model, "model_name"):
-            setattr(model, "model_name", args.model_name_override)
+        # Determine model provider and validate API key
+        if args.model_name_override:
+            # Auto-detect provider from model name, but allow explicit override
+            try:
+                detected_provider = detect_model_provider(args.model_name_override)
+                # Use explicit --model if provided, otherwise use detected provider
+                model_provider = args.model or detected_provider
+                validate_api_key(model_provider)
+                
+                # Load model with specific model name
+                model = get_llm_with_model_name(args.model_name_override, model_provider)
+            except ValueError as e:
+                logging.error("Model detection failed: %s", e)
+                return 2
         else:
-            logging.warning("Model override ignored; wrapper has no 'model_name' attribute")
+            # Use --model with default model name
+            model_provider = args.model
+            validate_api_key(model_provider)
+            model = get_llm(model_provider)
 
-    # Configure and run the prompt
-    runner = PromptRunner(
-        model=model,
-        file_id=args.file,
-        datatype=args.datatype,
-        context=args.context,
-        guide=args.guide,
-        dataset=args.dataset,
-        base_dirs=base_dirs,
-        temperature=args.temperature,
-        max_tokens=args.max_tokens,
-        save=not args.no_save,  # Save by default, unless --no-save is specified
-    )
+        # Configure and run the prompt
+        runner = PromptRunner(
+            model=model,
+            file_id=args.file,
+            datatype=args.datatype,
+            context=args.context,
+            guide=args.guide,
+            dataset=args.dataset,
+            base_dirs=base_dirs,
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+            save=not args.no_save,  # Save by default, unless --no-save is specified
+        )
 
-    logging.info(
-        "Running %s file=%s dataset=%s datatype=%s context=%s",  # noqa: E501
-        args.model,
-        args.file,
-        args.dataset,
-        args.datatype,
-        args.context,
-    )
+        logging.info(
+            "Running %s file=%s dataset=%s datatype=%s context=%s",  # noqa: E501
+            model_provider,
+            args.file,
+            args.dataset,
+            args.datatype,
+            args.context,
+        )
 
-    # Existence check for encoded file (after logging so user sees parameters)
-    datatype_dir = base_dirs["encoded"] / args.datatype
-    try:
-        encoded_file = find_encoded_file(args.file, args.datatype, datatype_dir, required=True)
-    except FileNotFoundError as e:
-        logging.error("Encoded source file not found: %s", e)
-        return 2
+        # Existence check for encoded file (after logging so user sees parameters)
+        datatype_dir = base_dirs["encoded"] / args.datatype
+        try:
+            encoded_file = find_encoded_file(args.file, args.datatype, datatype_dir, required=True)
+        except FileNotFoundError as e:
+            logging.error("Encoded source file not found: %s", e)
+            return 2
 
-    try:
-        response = runner.run()
-    except Exception as e:  # pragma: no cover (rare unexpected errors)
-        logging.error("Failed to run prompt: %s", e)
-        return 1
+        try:
+            response = runner.run()
+        except Exception as e:  # pragma: no cover (rare unexpected errors)
+            logging.error("Unexpected error during prompt execution: %s", e)
+            return 1
 
-    # Print and optionally save the response
-    print("\n=== Model Response ===\n")
-    print(response)
+        # Print and optionally save the response
+        print("\n=== Model Response ===\n")
+        print(response)
 
-    if not args.no_save and runner.save_to:
-        logging.info("Response saved to %s", runner.save_to)
-        print(f"\nSaved response to: {runner.save_to}")
+        if not args.no_save and runner.save_to:
+            logging.info("Response saved to %s", runner.save_to)
+            print(f"\nSaved response to: {runner.save_to}")
+        
     return 0
 
 
