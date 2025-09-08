@@ -12,7 +12,6 @@ endif
 export OPENAI_API_KEY ?= test-key-not-real
 export ANTHROPIC_API_KEY ?= test-key-not-real
 export GOOGLE_API_KEY ?= test-key-not-real
-export DEEPSEEK_API_KEY ?= test-key-not-real
 
 # Run all tests
 test:
