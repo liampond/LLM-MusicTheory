@@ -99,7 +99,7 @@ poetry run run-single --model chatgpt --file Q1b --datatype mei --context --data
 poetry run run-batch --models chatgpt,claude --files Q1b Q1c --datatypes mei,abc --dataset fux-counterpoint
 ```
 
-**🎉 That's it!** You're ready to start experimenting with music theory prompts.
+**🎉 That's it!** You're ready to start working with music theory prompts.
 
 ## 🔧️ Installation
 
@@ -165,7 +165,7 @@ If you see tests passing, you're ready to go! 🎉
    ```
    You may need to add this line to your `~/.bashrc` or `~/.zshrc` file and restart your terminal.y
 
-A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying ChatGPT, Claude, and Gemini. Built for experimentation and evaluation on official Royal Conservatory of Music (RCM) exam questions.
+A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying ChatGPT, Claude, and Gemini. Built for evaluation on official Royal Conservatory of Music (RCM) exam questions.
 
 ## Setup
 1. **Clone the repository**
@@ -278,13 +278,13 @@ poetry run run-single \
 
 #### Batch Processing
 
-Run multiple prompts automatically for experiments:
+Run multiple prompts automatically:
 
 ```bash
 # Test multiple models on same prompt
 poetry run run-batch --models chatgpt,claude,gemini --questions Q1b --datatypes mei
 
-# Full experiment across all combinations
+# Full batch processing across all combinations
 poetry run run-batch \
   --models chatgpt,claude \
   --questions Q1a,Q1b,Q2a \
@@ -321,7 +321,7 @@ poetry run run-single --list-all
 
 ### Python API
 
-For programmatic usage and custom experiments:
+For programmatic usage and custom workflows:
 
 ```python
 from llm_music_theory.core.runner import PromptRunner
