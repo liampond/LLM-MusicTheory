@@ -293,7 +293,7 @@ def _ensure_stub_modules() -> None:
                     )
                 )
 
-        openai_mod.OpenAI = _OpenAI
+        openai_mod.OpenAI = _OpenAI  # type: ignore[attr-defined]
         sys.modules["openai"] = openai_mod
 
     if "anthropic" not in sys.modules:
@@ -307,7 +307,7 @@ def _ensure_stub_modules() -> None:
                     )
                 )
 
-        anthropic_mod.Anthropic = _Anthropic
+        anthropic_mod.Anthropic = _Anthropic  # type: ignore[attr-defined]
         sys.modules["anthropic"] = anthropic_mod
 
     google_pkg = sys.modules.get("google")
@@ -325,7 +325,7 @@ def _ensure_stub_modules() -> None:
             def __init__(self, *args, **kwargs):
                 self.models = _ModelsNS()
 
-        genai_mod.Client = _Client
+        genai_mod.Client = _Client  # type: ignore[attr-defined]
         setattr(google_pkg, "genai", genai_mod)
         sys.modules["google.genai"] = genai_mod
 
