@@ -74,6 +74,7 @@ Thumbs.db
 ########################################
 *.pdf
 *.docx
+*.mscz~
 
 ########################################
 # Security (ensure not committed if created locally)
