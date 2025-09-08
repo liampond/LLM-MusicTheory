@@ -99,11 +99,17 @@ done
 
 ### Batch Processing
 ```bash
-# Use the batch runner for multiple files (when available)
+# Use the batch runner for multiple files (supports provider names)
 poetry run python -m llm_music_theory.cli.run_batch \
+  --models gemini \
   --files Fux_CantusFirmus \
-  --datatype musicxml \
-  --model gemini
+  --datatypes musicxml
+
+# Or use specific model names with auto-detection
+poetry run python -m llm_music_theory.cli.run_batch \
+  --models gemini-2.5-pro,gpt-4o,claude-3-sonnet \
+  --files Fux_CantusFirmus_A,Fux_CantusFirmus_C \
+  --datatypes musicxml
 ```
 
 ## Next Steps

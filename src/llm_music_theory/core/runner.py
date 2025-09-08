@@ -19,6 +19,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+import time
+import zoneinfo
 
 from llm_music_theory.models.base import LLMInterface, PromptInput
 from llm_music_theory.prompts.prompt_builder import PromptBuilder
@@ -125,7 +127,16 @@ class PromptRunner:
         self.logger.info(
             f"Running {self.file_id} [{self.datatype}] dataset={self.dataset} context={self.context} temp={self.temperature}"
         )
+        
+        # Capture timing for API call
+        start_time = time.time()
         response = self.model.query(prompt_input)
+        end_time = time.time()
+        api_duration = end_time - start_time
+        
+        # Store timing info for later use in _persist_artifacts
+        self._api_duration = api_duration
+        
         # Use f-string to match test expectation that the interpolated id appears directly
         self.logger.info(f"Received response for {self.file_id}")
         if self.save and self.save_to:
@@ -285,8 +296,15 @@ class PromptRunner:
         prompt_path = prompt_path.parent / (prompt_path.name + ".prompt.txt")
 
         # Build metadata section
-        timestamp = datetime.now(timezone.utc).isoformat()
+        try:
+            montreal_tz = zoneinfo.ZoneInfo("America/Montreal")
+            timestamp = datetime.now(montreal_tz).strftime("%Y-%m-%d %H:%M:%S %Z")
+        except Exception:
+            # Fallback to UTC if Montreal timezone fails
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        
         components = getattr(self, "_last_components", {})
+        api_duration = getattr(self, "_api_duration", None)
         
         metadata_lines = [
             "=== MODEL PARAMETERS ===",
@@ -298,8 +316,12 @@ class PromptRunner:
             f"Model: {type(self.model).__name__}",
             f"Temperature: {self.temperature}",
             f"Max Tokens: {self.max_tokens}",
-            f"Save Path: {self.save_to}",
         ]
+        
+        if api_duration is not None:
+            metadata_lines.append(f"API Duration: {api_duration:.2f} seconds")
+            
+        metadata_lines.append(f"Save Path: {self.save_to}")
         
         if prompt_input.model_name:
             metadata_lines.append(f"Model Name Override: {prompt_input.model_name}")
