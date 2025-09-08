@@ -44,6 +44,7 @@ class PromptRunner:
         file_id: Optional[str] = None,
         datatype: str = "mei",
         context: bool = False,
+        guide: Optional[str] = None,
         dataset: str = "fux-counterpoint",
         base_dirs: Optional[Dict[str, Path]] = None,
         temperature: float = 0.0,
@@ -66,6 +67,7 @@ class PromptRunner:
         if self.datatype not in self._EXT_MAP:
             self.logger.warning("Unrecognized datatype '%s'; proceeding anyway", self.datatype)
         self.context: bool = bool(context)
+        self.guide: Optional[str] = guide
         # exam_date kept for backward compatibility; dataset is new
         self.exam_date: str = exam_date or ""
         self.dataset: str = dataset
@@ -83,16 +85,32 @@ class PromptRunner:
                 ext = f".{self.datatype}"
                 self.save_to = get_output_path(
                     outputs_dir=self.base_dirs.get("outputs", Path("outputs")),
-                    model_name=type(model).__name__,
+                    model_name=self._get_clean_model_name(self.model),
                     file_id=self.file_id,
                     datatype=self.datatype,
                     context=self.context,
+                    guide=self.guide,
                     dataset=self.dataset,
                     ext=ext,
                 )
             except Exception as e:  # pragma: no cover (rare path issues)
                 self.logger.error("Failed to compute output path: %s", e)
                 self.save_to = None
+
+    def _get_clean_model_name(self, model) -> str:
+        """Get clean model name for folder structure."""
+        name = type(model).__name__
+        # Remove "Model" suffix and clean up names
+        if name.endswith("Model"):
+            name = name[:-5]  # Remove "Model"
+        # Handle specific cases
+        if name == "ChatGPT":
+            return "ChatGPT"
+        elif name == "Claude":
+            return "Claude"
+        elif name == "Gemini":
+            return "Gemini"
+        return name
 
     # Public API -----------------------------------------------------------------
     def run(self) -> str:
@@ -215,9 +233,21 @@ class PromptRunner:
         guides_dir = self.base_dirs.get("guides", Path("guides"))
         collected: List[str] = []
         if self.context and guides_dir.exists():
-            for f in sorted(guides_dir.iterdir()):
-                if f.is_file() and f.suffix in {".txt", ".md"}:
-                    collected.append(load_text_file(f))
+            if self.guide:
+                # Load only the specified guide
+                for ext in [".txt", ".md"]:
+                    guide_file = guides_dir / f"{self.guide}{ext}"
+                    if guide_file.is_file():
+                        collected.append(load_text_file(guide_file))
+                        break
+                else:
+                    # Guide file not found
+                    self.logger.warning("Guide file '%s' not found in %s", self.guide, guides_dir)
+            else:
+                # Load all guides (original behavior)
+                for f in sorted(guides_dir.iterdir()):
+                    if f.is_file() and f.suffix in {".txt", ".md"}:
+                        collected.append(load_text_file(f))
         return collected
 
     def _save_response(self, response: str) -> None:
@@ -237,6 +267,10 @@ class PromptRunner:
             self._save_prompt_file(prompt_input)
         except Exception as e:  # pragma: no cover
             self.logger.warning("Failed to write prompt file: %s", e)
+        try:
+            self._save_input_bundle(prompt_input)
+        except Exception as e:  # pragma: no cover
+            self.logger.warning("Failed to save input bundle: %s", e)
 
     # ------------------------------------------------------------------
     def _save_prompt_file(self, prompt_input: PromptInput) -> None:
@@ -300,3 +334,49 @@ class PromptRunner:
         prompt_path.write_text(full_content, encoding="utf-8")
         self.logger.info("Saved prompt file to %s", prompt_path)
         self.prompt_file_path = prompt_path
+
+    def _save_input_bundle(self, prompt_input: PromptInput) -> None:
+        """Write a companion .input.json file with prompt components and metadata.
+        
+        File naming: <base>.input.json next to the response file.
+        Contains all input components used to build the prompt.
+        """
+        if not self.save_to:
+            return
+        
+        bundle_path = self.save_to.with_suffix("")  # strip extension
+        bundle_path = bundle_path.parent / (bundle_path.name + ".input.json")
+        
+        # Build input bundle with components and metadata
+        components = getattr(self, "_last_components", {})
+        
+        bundle = {
+            "file_id": self.file_id,
+            "dataset": self.dataset,
+            "datatype": self.datatype,
+            "context": self.context,
+            "exam_date": self.exam_date,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "model": type(self.model).__name__,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "system_prompt": prompt_input.system_prompt,
+            "user_prompt_compiled": prompt_input.user_prompt,
+            "model_name_override": prompt_input.model_name,
+        }
+        
+        # Add individual components
+        for key, value in components.items():
+            if key == "guides":
+                bundle["guides"] = value if isinstance(value, list) else [value] if value else []
+            else:
+                bundle[key] = value
+        
+        # Add encoded_data separately for clarity
+        if "encoded_data" in components:
+            bundle["encoded_data"] = components["encoded_data"]
+        
+        bundle_json = json.dumps(bundle, ensure_ascii=False, indent=2)
+        bundle_path.write_text(bundle_json, encoding="utf-8")
+        self.logger.info("Saved input bundle to %s", bundle_path)
+        self.input_bundle_path = bundle_path
