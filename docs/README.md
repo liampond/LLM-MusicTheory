@@ -209,7 +209,7 @@ poetry run run-batch [OPTIONS]
 1. Start with lower‑cost providers while iterating
 2. Leverage free tiers (Gemini) before using premium models
 3. Monitor dashboards; set soft internal token budgets
-4. Batch experiments; reuse compiled prompt bundles when possible
+4. Batch processing; reuse compiled prompt bundles when possible
 
 ### File Organization
 
@@ -221,7 +221,6 @@ project/
 │   │   └── fux-counterpoint__Q1b_mei_context.input.json
 │   └── Claude/
 ├── data/ (optional project‑specific dataset)
-└── experiments/
 ```
 
 ## 🧩 Advanced Usage
@@ -316,7 +315,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 - Use `temperature=0.0` for reproducible results
 - Set appropriate `max_tokens` to control costs
-- Cache responses when experimenting
+- Cache responses when testing
 - Use batch processing for multiple queries
 
 ---

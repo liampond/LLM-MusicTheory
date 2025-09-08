@@ -175,7 +175,7 @@ def collect_research_data():
                 run_condition(model, format_type, context)
 
 def run_condition(model, format_type, context):
-    """Run a single experimental condition."""
+    """Run a single analysis condition."""
     # Implementation details...
     pass
 ```
@@ -307,7 +307,7 @@ Consider both statistical and practical significance:
 
 **Transparency Requirements**:
 - Report all models and versions tested
-- Disclose any failed experiments or null results
+- Disclose any failed analyses or null results
 - Share data and analysis code when possible
 - Acknowledge limitations and biases
 

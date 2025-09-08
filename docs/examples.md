@@ -126,7 +126,7 @@ def main():
     logger = setup_logger("systematic_analysis", "INFO")
     runner = PromptRunner()
     
-    # Define experimental conditions
+    # Define analysis conditions
     conditions = {
         "questions": ["Q1b"],
         "models": [
@@ -291,7 +291,7 @@ class ResearchDataCollector:
     def collect_condition(self, condition_id: str, question: str, 
                          model: str, format_type: str, use_context: bool,
                          repetitions: int = 3):
-        """Collect data for a single experimental condition."""
+        """Collect data for a single analysis condition."""
         
         self.logger.info(f"Collecting condition {condition_id}: "
                         f"{question}, {model}, {format_type}, "

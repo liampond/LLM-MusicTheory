@@ -15,7 +15,7 @@ poetry run python -m llm_music_theory.cli.run_single \
   --datatype musicxml \
   --model gemini
 
-# Analyze RCM6 questions with context (experimental - may have path issues)
+# Analyze RCM6 questions with context (may have path issues)
 poetry run python -m llm_music_theory.cli.run_single \
   --file Q1b \
   --datatype musicxml \
@@ -55,7 +55,7 @@ output/
 
 Current questions in the database:
 - **Fux-Counterpoint dataset**: `Fux_CantusFirmus` (counterpoint composition)
-- **RCM6 dataset**: `Q1b` (analysis question - experimental path support)
+- **RCM6 dataset**: `Q1b` (analysis question - limited path support)
 
 ## Supported Models
 
