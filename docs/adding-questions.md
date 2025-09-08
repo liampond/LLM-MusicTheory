@@ -14,7 +14,7 @@ Both variants should test the same concept but approach it differently.
 
 Questions are organized in this structure:
 ```
-src/llm_music_theory/prompts/questions/
+data/RCM6/prompts/questions/
 ├── no_context/
 │   └── your_question.txt
 └── context/
@@ -35,20 +35,24 @@ src/llm_music_theory/prompts/questions/
 First, create encoded versions of your musical example in all supported formats:
 
 ```bash
-# Create directories for your question
-mkdir -p src/llm_music_theory/encoded/musicxml
-mkdir -p src/llm_music_theory/encoded/mei
-mkdir -p src/llm_music_theory/encoded/abc
-mkdir -p src/llm_music_theory/encoded/humdrum
+# Create directories for your question (use appropriate dataset)
+mkdir -p data/RCM6/encoded/musicxml
+mkdir -p data/RCM6/encoded/mei
+mkdir -p data/RCM6/encoded/abc
+mkdir -p data/RCM6/encoded/humdrum
 ```
 
 **Example: Adding question Q2a**
 
 Save your musical content in each format:
-- `src/llm_music_theory/encoded/musicxml/Q2a.musicxml`
-- `src/llm_music_theory/encoded/mei/Q2a.mei`
-- `src/llm_music_theory/encoded/abc/Q2a.abc`
-- `src/llm_music_theory/encoded/humdrum/Q2a.krn`
+- `data/RCM6/encoded/musicxml/Q2a.musicxml`
+- `data/RCM6/encoded/mei/Q2a.mei`
+- `data/RCM6/encoded/abc/Q2a.abc`
+- `- `data/RCM6/encoded/humdrum/Q2a.krn`
+
+### Step 2: Create Question Prompts
+
+Create `data/RCM6/prompts/questions/no_context/Q2a.txt`:`
 
 ### 2. Create the No-Context Question
 
@@ -72,7 +76,7 @@ Provide your analysis in a clear, structured format with measure numbers.
 
 Create format-specific questions that reference the encoded content:
 
-**MusicXML version** (`src/llm_music_theory/prompts/questions/context/musicxml/Q2a.txt`):
+**MusicXML version** (`data/RCM6/prompts/questions/context/musicxml/Q2a.txt`):
 ```text
 Given the musical score in MusicXML format below, provide a detailed harmonic analysis.
 
@@ -89,7 +93,7 @@ Analyze this musical excerpt and identify:
 Provide your analysis in a clear, structured format with specific measure numbers and beat references. Explain your reasoning for ambiguous passages.
 ```
 
-**MEI version** (`src/llm_music_theory/prompts/questions/context/mei/Q2a.txt`):
+**MEI version** (`data/RCM6/prompts/questions/context/mei/Q2a.txt`):
 ```text
 Given the musical score in MEI (Music Encoding Initiative) format below, provide a detailed harmonic analysis.
 
@@ -106,7 +110,7 @@ Analyze this musical excerpt and identify:
 Use the structural information available in the MEI encoding to support your analysis. Provide specific measure numbers and beat references.
 ```
 
-**ABC version** (`src/llm_music_theory/prompts/questions/context/abc/Q2a.txt`):
+**ABC version** (`data/RCM6/prompts/questions/context/abc/Q2a.txt`):
 ```text
 Given the musical score in ABC notation format below, provide a detailed harmonic analysis.
 
@@ -123,7 +127,7 @@ Analyze this musical excerpt and identify:
 Reference the ABC notation structure in your analysis. Provide measure numbers and note positions as they appear in the ABC format.
 ```
 
-**Humdrum version** (`src/llm_music_theory/prompts/questions/context/humdrum/Q2a.txt`):
+**Humdrum version** (`data/RCM6/prompts/questions/context/humdrum/Q2a.txt`):
 ```text
 Given the musical score in Humdrum format below, provide a detailed harmonic analysis.
 
@@ -237,13 +241,14 @@ Test your new questions with different models:
 
 ```bash
 # Test with different models
-for model in "gemini-2.0-flash-exp" "gpt-4o" "claude-3-5-sonnet-20241022"; do
+for model in "gemini" "chatgpt" "claude"; do
   echo "Testing Q2a with $model..."
-  python -m llm_music_theory.cli.run_single \
-    --question Q2a \
-    --encoded_type musicxml \
+  poetry run python -m llm_music_theory.cli.run_single \
+    --file Q2a \
+    --datatype musicxml \
     --model "$model" \
-    --context
+    --context \
+    --dataset RCM6
 done
 ```
 
@@ -255,11 +260,12 @@ Test how models handle different music formats:
 # Test different formats
 for format in "musicxml" "mei" "abc" "humdrum"; do
   echo "Testing Q2a with $format format..."
-  python -m llm_music_theory.cli.run_single \
-    --question Q2a \
-    --encoded_type "$format" \
-    --model gemini-2.0-flash-exp \
-    --context
+  poetry run python -m llm_music_theory.cli.run_single \
+    --file Q2a \
+    --datatype "$format" \
+    --model gemini \
+    --context \
+    --dataset RCM6
 done
 ```
 
@@ -269,17 +275,18 @@ Compare context and no-context responses:
 
 ```bash
 # With context
-python -m llm_music_theory.cli.run_single \
-  --question Q2a \
-  --encoded_type musicxml \
-  --model gemini-2.0-flash-exp \
-  --context
+poetry run python -m llm_music_theory.cli.run_single \
+  --file Q2a \
+  --datatype musicxml \
+  --model gemini \
+  --context \
+  --dataset RCM6
 
 # Without context
-python -m llm_music_theory.cli.run_single \
-  --question Q2a \
-  --model gemini-2.0-flash-exp \
-  --no-context
+poetry run python -m llm_music_theory.cli.run_single \
+  --file Q2a \
+  --model gemini \
+  --dataset RCM6
 ```
 
 ## Quality Assurance

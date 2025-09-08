@@ -368,13 +368,13 @@ pytest --cov=src/llm_music_theory --cov-report=html
 
 1. **Add encoded files**:
    ```bash
-   mkdir -p src/llm_music_theory/encoded/new_format
+   mkdir -p data/your-dataset/encoded/new_format
    # Add your encoded files here
    ```
 
 2. **Add base prompt**:
    ```bash
-   # src/llm_music_theory/prompts/base/base_new_format.txt
+   # data/your-dataset/prompts/base/base_new_format.md
    You are analyzing a musical score provided in NEW_FORMAT format.
    
    NEW_FORMAT is a music encoding standard that...
@@ -390,7 +390,7 @@ pytest --cov=src/llm_music_theory --cov-report=html
 
 3. **Add question templates**:
    ```bash
-   mkdir -p src/llm_music_theory/prompts/questions/context/new_format
+   mkdir -p data/your-dataset/prompts/questions/context/new_format
    # Add question files for this format
    ```
 
@@ -446,31 +446,32 @@ pytest --cov=src/llm_music_theory --cov-report=html
    ```bash
    # No-context version
    echo "Your question text here..." > \
-     src/llm_music_theory/prompts/questions/no_context/Q2a.txt
+     data/RCM6/prompts/questions/no_context/Q2a.txt
    
    # Context versions for each format
    for format in musicxml mei abc humdrum; do
      echo "Context-aware question for $format..." > \
-       src/llm_music_theory/prompts/questions/context/$format/Q2a.txt
+       data/RCM6/prompts/questions/context/$format/Q2a.txt
    done
    ```
 
 2. **Add encoded content**:
    ```bash
-   # Add musical content in all supported formats
-   cp your_content.musicxml src/llm_music_theory/encoded/musicxml/Q2a.musicxml
-   cp your_content.mei src/llm_music_theory/encoded/mei/Q2a.mei
-   cp your_content.abc src/llm_music_theory/encoded/abc/Q2a.abc
-   cp your_content.krn src/llm_music_theory/encoded/humdrum/Q2a.krn
+   # Add musical content in all supported formats  
+   cp your_content.musicxml data/RCM6/encoded/musicxml/Q2a.musicxml
+   cp your_content.mei data/RCM6/encoded/mei/Q2a.mei
+   cp your_content.abc data/RCM6/encoded/abc/Q2a.abc
+   cp your_content.krn data/RCM6/encoded/humdrum/Q2a.krn
    ```
 
 3. **Test the new question**:
    ```bash
-   python -m llm_music_theory.cli.run_single \
-     --question Q2a \
-     --model gemini-2.0-flash-exp \
-     --encoded_type musicxml \
-     --context
+   poetry run python -m llm_music_theory.cli.run_single \
+     --file Q2a \
+     --model gemini \
+     --datatype musicxml \
+     --context \
+     --dataset RCM6
    ```
 
 4. **Add validation tests**:
