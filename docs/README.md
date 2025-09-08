@@ -172,7 +172,7 @@ poetry run run-single [OPTIONS]
 - `--context`: Include context guides
 - `--temperature FLOAT`: Sampling temperature
 - `--max-tokens INTEGER`: Response length limit
-- `--save`: Save response to file
+- `--no-save`: Don't save response to file (default: automatically save)
 
 #### `run-batch`
 
