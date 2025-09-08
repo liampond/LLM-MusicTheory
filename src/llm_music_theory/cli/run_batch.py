@@ -41,7 +41,6 @@ MODEL_ENV_VARS: Dict[str, str] = {
     "chatgpt": "OPENAI_API_KEY",
     "claude": "ANTHROPIC_API_KEY",
     "gemini": "GOOGLE_API_KEY",
-    "deepseek": "DEEPSEEK_API_KEY",
 }
 
 
@@ -92,6 +91,7 @@ class Task:
     file_id: str
     datatype: str
     context: bool
+    guide: Optional[str]
     temperature: float
     max_tokens: Optional[int]
     save: bool
@@ -110,6 +110,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--context",
         action="store_true",
         help="Include contextual guides",
+    )
+    parser.add_argument(
+        "--guide",
+        type=str,
+        help="Specific guide to use (requires --context). Use --list-guides to see available guides.",
     )
     parser.add_argument(
         "--files",
@@ -183,7 +188,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 
 def expand_models(raw: str) -> List[str]:
     if raw.lower() == "all":
-        return ["chatgpt", "claude", "gemini", "deepseek"]
+        return ["chatgpt", "claude", "gemini"]
     return [m.strip() for m in raw.split(",") if m.strip()]
 
 
@@ -199,6 +204,7 @@ def prepare_tasks(
             file_id=fid,
             datatype=dt,
             context=args.context,
+            guide=args.guide,
             temperature=args.temperature,
             max_tokens=args.max_tokens,
             save=not args.no_save,  # Save by default, unless --no-save is specified
@@ -217,6 +223,7 @@ def run_task(task: Task, base_dirs: Dict[str, Path]) -> bool:
         file_id=task.file_id,
         datatype=task.datatype,
         context=task.context,
+        guide=task.guide,
         dataset=task.dataset,
         base_dirs=base_dirs,
         temperature=task.temperature,
@@ -270,6 +277,7 @@ def worker(task_tuple) -> bool:  # type: ignore
         file_id=file_id,
         datatype=datatype,
         context=context,
+        guide=None,  # Legacy worker doesn't support guide selection
         temperature=temperature,
         max_tokens=max_tokens,
         save=save,
@@ -346,6 +354,19 @@ def run_main(argv: list[str] | None = None) -> int:
 
     models = expand_models(args.models)
     validate_api_keys(models)
+
+    # Validate guide usage
+    if args.guide and not args.context:
+        logging.error("--guide requires --context")
+        return 2
+    
+    if args.guide:
+        # Validate that the specified guide exists
+        from llm_music_theory.utils.path_utils import list_guides
+        available_guides = list_guides(base_dirs["guides"])
+        if args.guide not in available_guides:
+            logging.error("Guide '%s' not found. Available guides: %s", args.guide, ', '.join(available_guides))
+            return 2
 
     selected_files = parse_csv_or_list(args.files) or parse_csv_or_list(args.questions)
     file_ids = selected_files or list_file_ids(base_dirs["encoded"])

@@ -11,12 +11,10 @@ DEFAULT_MODELS = {
     "anthropic": "claude-3-haiku-20240307",
     # Use a stable generally-available Gemini text model rather than a dated preview
     "google": "gemini-1.5-flash",
-    "deepseek": "deepseek-chat" # Cheapest, $0.07USD/MToken Input
 }
 
 API_KEYS = {
     "openai": os.getenv("OPENAI_API_KEY"),
     "anthropic": os.getenv("ANTHROPIC_API_KEY"),
     "google": os.getenv("GOOGLE_API_KEY"),
-    "deepseek": os.getenv("DEEPSEEK_API_KEY"),
 }

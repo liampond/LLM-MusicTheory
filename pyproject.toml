@@ -27,13 +27,11 @@ openai                = "^1.78.1"
 # Make other providers optional so users install only what they need
 google-genai          = "^1.29.0"
 anthropic             = { version = "^0.50.0", optional = true }
-deepseek              = { version = "^1.0.0", optional = true }
 
 [tool.poetry.extras]
 anthropic = ["anthropic"]
 google    = ["google-genai"]
-deepseek  = ["deepseek"]
-all       = ["anthropic", "google-genai", "deepseek"]
+all       = ["anthropic", "google-genai"]
 
 [tool.poetry.group.dev.dependencies]
 pytest                = "^8.1.1"

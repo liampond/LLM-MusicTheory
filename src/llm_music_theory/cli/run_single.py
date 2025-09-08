@@ -38,7 +38,6 @@ MODEL_ENV_VARS: Dict[str, str] = {
     "chatgpt": "OPENAI_API_KEY",
     "claude": "ANTHROPIC_API_KEY",
     "gemini": "GOOGLE_API_KEY",  # google-genai SDK expects GOOGLE_API_KEY
-    "deepseek": "DEEPSEEK_API_KEY",
 }
 
 
@@ -88,7 +87,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     run_group = parser.add_argument_group("Run", "Execute a single prompt")
     run_group.add_argument(
         "--model",
-        choices=["chatgpt", "claude", "gemini", "deepseek"],
+        choices=["chatgpt", "claude", "gemini"],
         help="LLM to use",
     )
     run_group.add_argument(
@@ -109,6 +108,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "--context",
         action="store_true",
         help="Include contextual guides",
+    )
+    run_group.add_argument(
+        "--guide",
+        type=str,
+        help="Specific guide to use (requires --context). Use --list-guides to see available guides.",
     )
     run_group.add_argument(
         "--examdate",
@@ -243,6 +247,16 @@ def main(argv: list[str] | None = None) -> int:
             missing.append("--file")
         if not args.datatype:
             missing.append("--datatype")
+        
+        # Validate guide usage
+        if args.guide and not args.context:
+            parser.error("--guide requires --context")
+        
+        if args.guide:
+            # Validate that the specified guide exists
+            available_guides = list_guides(base_dirs["guides"])
+            if args.guide not in available_guides:
+                parser.error(f"Guide '{args.guide}' not found. Available guides: {', '.join(available_guides)}")
         if missing:
             parser.error(f"The following arguments are required: {', '.join(missing)}")
 
@@ -266,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         file_id=args.file,
         datatype=args.datatype,
         context=args.context,
+        guide=args.guide,
         dataset=args.dataset,
         base_dirs=base_dirs,
         temperature=args.temperature,

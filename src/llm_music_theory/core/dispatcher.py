@@ -18,7 +18,7 @@ from typing import Callable, Dict, List
 from llm_music_theory.models.base import LLMInterface
 
 # Canonical model keys recognised by the project.
-_CANONICAL: List[str] = ["chatgpt", "gemini", "claude", "deepseek"]
+_CANONICAL: List[str] = ["chatgpt", "gemini", "claude"]
 
 # Aliases map (lowercase) -> canonical key.
 _ALIASES: Dict[str, str] = {
@@ -26,7 +26,6 @@ _ALIASES: Dict[str, str] = {
     "gpt": "chatgpt",  # user convenience
     "anthropic": "claude",
     "google": "gemini",
-    "deepseek-chat": "deepseek",  # possible variant
 }
 
 # Factory registry storing zero-arg callables that instantiate each model wrapper.
@@ -46,12 +45,6 @@ _REGISTRY: Dict[str, Callable[[], LLMInterface]] = {
         cls="ClaudeModel",
         extra="anthropic",
         human_name="Anthropic Claude",
-    ),
-    "deepseek": lambda: _load_optional(
-        module="llm_music_theory.models.deepseek",
-        cls="DeepSeekModel",
-        extra="deepseek",
-        human_name="DeepSeek",
     ),
 }
 
