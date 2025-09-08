@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from time import sleep
 from dotenv import load_dotenv
 
-from llm_music_theory.core.dispatcher import get_llm
+from llm_music_theory.core.dispatcher import get_llm, get_llm_with_model_name, detect_model_provider
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.utils.path_utils import (
     find_project_root,
@@ -87,7 +87,7 @@ def validate_api_keys(models: Iterable[str]) -> None:
 
 @dataclass(frozen=True)
 class Task:
-    model_name: str
+    model_name: str  # This is now the original model specification (could be provider or specific model)
     file_id: str
     datatype: str
     context: bool
@@ -104,7 +104,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--models",
         required=True,
-        help="Comma-separated models (e.g. chatgpt,claude) or 'all'",
+        help="Comma-separated models (e.g. chatgpt,claude or gpt-4o,claude-3-sonnet) or 'all'",
     )
     parser.add_argument(
         "--context",
@@ -186,10 +186,47 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def expand_models(raw: str) -> List[str]:
+def expand_models(raw: str) -> tuple[List[str], List[str]]:
+    """Expand model specification to list of model identifiers.
+    
+    Supports:
+    - "all" -> ["chatgpt", "claude", "gemini"] 
+    - Comma-separated provider names: "chatgpt,claude"
+    - Comma-separated specific model names: "gpt-4o,claude-3-sonnet"
+    - Mixed: "chatgpt,gpt-4o,claude-3-sonnet"
+    
+    Returns:
+        tuple of (original_models, provider_names) where:
+        - original_models: the original model specifications for LLM instantiation
+        - provider_names: provider names for API key validation
+        
+    Raises:
+        ValueError: If any model specification is invalid
+    """
     if raw.lower() == "all":
-        return ["chatgpt", "claude", "gemini"]
-    return [m.strip() for m in raw.split(",") if m.strip()]
+        providers = ["chatgpt", "claude", "gemini"]
+        return providers, providers
+    
+    models = [m.strip() for m in raw.split(",") if m.strip()]
+    providers = []
+    
+    for model in models:
+        try:
+            # Try to detect provider from model name (handles specific model names)
+            provider = detect_model_provider(model)
+            providers.append(provider)
+        except ValueError:
+            # Not a specific model name, try to validate as provider name
+            from llm_music_theory.core.dispatcher import list_available_models
+            available = list_available_models()
+            if model.lower() not in available and model not in available:
+                raise ValueError(
+                    f"Unknown model: '{model}'. Supported providers: {', '.join(available)}. "
+                    f"Or use specific model names like 'gpt-4o', 'claude-3-sonnet', 'gemini-1.5-pro'."
+                )
+            providers.append(model)
+    
+    return models, providers
 
 
 def prepare_tasks(
@@ -218,8 +255,23 @@ def prepare_tasks(
 
 
 def run_task(task: Task, base_dirs: Dict[str, Path]) -> bool:
+    # Determine if we need to use auto-detection or standard model loading
+    try:
+        # Try to detect provider (handles specific model names like "gpt-4o")
+        provider = detect_model_provider(task.model_name)
+        model = get_llm_with_model_name(task.model_name, provider)
+    except ValueError:
+        # Not a specific model name, try to treat it as a provider name
+        try:
+            model = get_llm(task.model_name)
+        except ValueError as e:
+            logging.error(
+                "[%s] Invalid model specification: %s", task.model_name, e
+            )
+            return False
+    
     runner = PromptRunner(
-        model=get_llm(task.model_name),
+        model=model,
         file_id=task.file_id,
         datatype=task.datatype,
         context=task.context,
@@ -352,8 +404,8 @@ def run_main(argv: list[str] | None = None) -> int:
             logging.error("Missing required dataset subdirectory: %s", base_dirs[sub])
             return 2
 
-    models = expand_models(args.models)
-    validate_api_keys(models)
+    models, providers = expand_models(args.models)
+    validate_api_keys(providers)
 
     # Validate guide usage
     if args.guide and not args.context:

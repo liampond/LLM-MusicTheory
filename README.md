@@ -95,8 +95,10 @@ poetry run run-single --model chatgpt --file Q1b --datatype mei --context --data
 
 # (Legacy alias still works) --question Q1b
 
-# 5. Run batch processing
+# 5. Run batch processing (supports provider names or specific model names)
 poetry run run-batch --models chatgpt,claude --files Q1b Q1c --datatypes mei,abc --dataset fux-counterpoint
+# Or use specific model names:
+poetry run run-batch --models gpt-4o,claude-3-sonnet --files Q1b --datatypes mei --dataset fux-counterpoint
 ```
 
 **🎉 That's it!** You're ready to start experimenting with music theory prompts.
@@ -281,8 +283,11 @@ poetry run run-single \
 Run multiple prompts automatically for experiments:
 
 ```bash
-# Test multiple models on same prompt
+# Test multiple models on same prompt (provider names)
 poetry run run-batch --models chatgpt,claude,gemini --questions Q1b --datatypes mei
+
+# Or use specific model names with auto-detection
+poetry run run-batch --models gpt-4o,claude-3-sonnet,gemini-1.5-pro --questions Q1b --datatypes mei
 
 # Full experiment across all combinations
 poetry run run-batch \
