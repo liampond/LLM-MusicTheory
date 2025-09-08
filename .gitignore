@@ -75,6 +75,7 @@ Thumbs.db
 *.pdf
 *.docx
 *.mscz~
+.mscbackup/
 
 ########################################
 # Security (ensure not committed if created locally)
