@@ -71,11 +71,13 @@ class TestPathUtils:
         
         # Find MEI file
         mei_file = find_encoded_file("Q1a", "mei", encoded_dir)
+        assert mei_file is not None
         assert mei_file.name == "Q1a.mei"
         assert mei_file.exists()
         
         # Find ABC file
         abc_file = find_encoded_file("Q1a", "abc", encoded_dir)
+        assert abc_file is not None
         assert abc_file.name == "Q1a.abc"
         assert abc_file.exists()
 
@@ -91,6 +93,7 @@ class TestPathUtils:
         questions_dir = temp_structure / "questions"
         
         question_file = find_question_file("Q1a", True, questions_dir)
+        assert question_file is not None
         assert question_file.name == "Q1a.context.txt"
         assert question_file.exists()
 
@@ -99,6 +102,7 @@ class TestPathUtils:
         questions_dir = temp_structure / "questions"
         
         question_file = find_question_file("Q1a", False, questions_dir)
+        assert question_file is not None
         assert question_file.name == "Q1a.nocontext.txt"
         assert question_file.exists()
 

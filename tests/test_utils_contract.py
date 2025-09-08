@@ -6,6 +6,7 @@ independent of current implementation details.
 """
 import os
 import tempfile
+import time
 from unittest.mock import Mock, patch, mock_open
 
 import pytest
@@ -52,7 +53,7 @@ class TestConfigurationContract:
             if hasattr(settings, 'API_KEYS'):
                 api_keys = settings.API_KEYS
             elif hasattr(settings, 'api_keys'):
-                api_keys = settings.api_keys
+                api_keys = settings.api_keys  # type: ignore[attr-defined]
             else:
                 pytest.skip("API keys configuration not found")
             
@@ -73,7 +74,7 @@ class TestConfigurationContract:
                 if hasattr(settings, 'API_KEYS'):
                     api_keys = settings.API_KEYS
                 elif hasattr(settings, 'api_keys'):
-                    api_keys = settings.api_keys
+                    api_keys = settings.api_keys  # type: ignore[attr-defined]
                 else:
                     pytest.skip("API keys configuration not found")
                 
@@ -221,7 +222,7 @@ class TestLoggingContract:
         if not has_log_functions:
             # Maybe it's a logger instance
             if hasattr(logger, 'logger'):
-                actual_logger = logger.logger
+                actual_logger = logger.logger  # type: ignore[attr-defined]
                 has_log_functions = any(
                     hasattr(actual_logger, func) and callable(getattr(actual_logger, func))
                     for func in log_functions
@@ -231,9 +232,9 @@ class TestLoggingContract:
             # Test basic logging (should not raise errors)
             try:
                 if hasattr(logger, 'info'):
-                    logger.info("Test log message")
+                    logger.info("Test log message")  # type: ignore[attr-defined]
                 elif hasattr(logger, 'logger'):
-                    logger.logger.info("Test log message")
+                    logger.logger.info("Test log message")  # type: ignore[attr-defined]
             except Exception as e:
                 pytest.fail(f"Basic logging failed: {e}")
 
@@ -407,7 +408,7 @@ class TestPerformanceContract:
                 if hasattr(settings, 'API_KEYS'):
                     _ = settings.API_KEYS
                 elif hasattr(settings, 'api_keys'):
-                    _ = settings.api_keys
+                    _ = settings.api_keys  # type: ignore[attr-defined]
                 else:
                     break
             except Exception:
@@ -471,7 +472,7 @@ class TestSecurityContract:
             if hasattr(settings, 'API_KEYS'):
                 api_keys = settings.API_KEYS
             elif hasattr(settings, 'api_keys'):
-                api_keys = settings.api_keys
+                api_keys = settings.api_keys  # type: ignore[attr-defined]
             else:
                 pytest.skip("API keys configuration not found")
             

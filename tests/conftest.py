@@ -255,9 +255,9 @@ def pytest_collection_modifyitems(config, items):  # type: ignore[override]
             item.add_marker(pytest.mark.slow)
 
 
-def pytest_ignore_collect(path, config):  # type: ignore[override]
+def pytest_ignore_collect(collection_path, config):  # type: ignore[override]
     """Ignore legacy duplicate tests to avoid double coverage/conflicts."""
-    p = str(path)
+    p = str(collection_path)
     if p.endswith("_fixed.py") or p.endswith("_new.py"):
         return True
     return False

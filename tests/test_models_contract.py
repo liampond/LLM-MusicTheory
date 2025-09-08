@@ -159,14 +159,14 @@ class TestPromptInputContract:
         """PromptInput MUST require essential fields."""
         # Missing system_prompt
         with pytest.raises((TypeError, ValueError)):
-            PromptInput(
+            PromptInput(  # type: ignore[call-arg]
                 user_prompt="test",
                 temperature=0.5
             )
         
         # Missing user_prompt  
         with pytest.raises((TypeError, ValueError)):
-            PromptInput(
+            PromptInput(  # type: ignore[call-arg]
                 system_prompt="test",
                 temperature=0.5
             )
@@ -211,7 +211,7 @@ class TestLLMInterfaceAbstraction:
             pass
         
         with pytest.raises(TypeError):
-            IncompleteModel()
+            IncompleteModel()  # type: ignore[abstract]
         
         # This should work - complete implementation
         class CompleteModel(LLMInterface):
