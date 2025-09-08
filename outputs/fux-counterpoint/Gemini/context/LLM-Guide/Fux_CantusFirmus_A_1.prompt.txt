@@ -1,0 +1,585 @@
+=== MODEL PARAMETERS ===
+Timestamp: 2025-09-08T21:54:09.981069+00:00
+File: Fux_CantusFirmus_A
+Dataset: fux-counterpoint
+Datatype: musicxml
+Context: context
+Model: GeminiModel
+Temperature: 0.0
+Max Tokens: None
+Save Path: /Users/Liam/Documents/Main/School/MasterDegree/GitHub/LLM-MusicTheory/outputs/fux-counterpoint/Gemini/context/LLM-Guide/Fux_CantusFirmus_A_1.musicxml
+
+Component Lengths:
+  system_prompt: 0 chars
+  format_prompt: 164 chars
+  encoded_data: 7720 chars
+  guides: 5750 chars
+  question_prompt: 413 chars
+
+=== USER PROMPT ===
+### Task
+
+You are an expert in 16th-century counterpoint following the rules of Johann Joseph Fux’s Gradus ad Parnassum. You will be given a cantus firmus bass line consisting of whole notes. Your task is to compose a second voice above the given voice in first species counterpoint (note-against-note). To learn about the contrapuntal rules of this style, please closely follow the information provided in the guide below.
+
+### Guide
+
+**“LLM translated” Version**
+
+**0\. Core Data Types**
+
+Pitch = str # e.g. "C4", "F#3"
+
+Mode = Enum("Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Ionian")
+
+Species = Enum("Authentic", "Plagal")
+
+Motion = Enum("Parallel", "Similar", "Contrary", "Oblique")
+
+Cantus = List\[Pitch\] # immutable input
+
+Counterpt = List\[Pitch\] # mutable, one element per cantus note
+
+State = {
+
+"cantus" : Cantus,
+
+"cp" : Counterpt,
+
+"mode" : Mode,
+
+"species" : Species,
+
+"position" : "above" | "below" # user choice for CP placement
+
+}
+
+**1\. Mode-Detection Routine (§ 1)**
+
+def detect_mode(cantus: Cantus) -> tuple\[Mode, Species\]:
+
+final = cantus\[-1\] # 1.1
+
+pitches = set(cantus) # 1.2-Method-step-1
+
+candidates = \[\] # 1.2-Method-step-2
+
+for mode in six_modes: # pre-coded table from § 1.2
+
+if all( pitch in modal_scale(final, mode)
+
+or pitch == licensed_accidental(final, mode)
+
+for pitch in pitches ):
+
+candidates.append(mode)
+
+if len(candidates) == 0:
+
+raise ModalError("Cantus is non-modal")
+
+low, high = ambitus(cantus, final) # 1.3
+
+species = "Plagal" if low <= -4 and high <= +5 else "Authentic"
+
+mode = resolve_by_cadence(cantus, final, species, candidates) # 1.4
+
+audit_accidentals(cantus, mode) # 1.5
+
+return mode, species # 1.6
+
+**2\. Note-Generation Loop (§ 6)**
+
+def build_counterpoint(state: State) -> Counterpt:
+
+for idx, cf_note in enumerate(state\["cantus"\]):
+
+candidates = legal_consonant_pitches(cf_note, state) # § 2
+
+\# Depth-first search with backtracking
+
+placed = False
+
+for cp_note in candidates:
+
+if validate_all_rules(state, cf_note, cp_note, idx):
+
+state\["cp"\].append(cp_note)
+
+placed = True
+
+break
+
+if not placed: # 6.3 backtracking
+
+back_up(state) # erase previous CP note(s)
+
+return build_counterpoint(state)
+
+return state\["cp"\]
+
+**3\. Rule-Validation Pipeline (§ 6.2)**
+
+def validate_all_rules(state, cf, cp, i) -> bool:
+
+return ( vertical_consonance(cp, cf, state) # 6.2-1 & § 2
+
+and motion_ok(cp, state, i) # 6.2-2 & § 3
+
+and no_hidden_parallels(cp, state, i) # 6.2-3 & § 3.3
+
+and melodic_ok(cp, state, i) # 6.2-4 & § 4
+
+and spacing_ok(cp, state, i) # 6.2-5 & § 5
+
+and accidental_ok(cp, state, i)) # 6.2-6 & § 1.5
+
+**3.1 Vertical Consonance (§ 2)**
+
+def vertical_consonance(cp, cf, state):
+
+interval = get_interval(cp, cf, state\["position"\])
+
+if interval not in perfect+imperfect: return False # 2.1-2
+
+if cadence_penult(cf, state, interval) is False: return False
+
+return consonance_balance_ok(state) # 2.1-3
+
+**3.2 Motion Rules (§ 3)**
+
+def motion_ok(cp, state, i):
+
+if i == 0: return True
+
+motion = classify_motion(state\["cp"\]\[i-1\], cp,
+
+state\["cantus"\]\[i-1\], state\["cantus"\]\[i\])
+
+prev_int = classify_interval(state\["cp"\]\[i-1\], state\["cantus"\]\[i-1\], state)
+
+curr_int = classify_interval(cp, state\["cantus"\]\[i\], state)
+
+return motion_matrix\[prev_int\]\[curr_int\](motion) # implements table § 3.2
+
+**3.3 Forbidden Parallels & Hidden Perfects (§ 3.3)**
+
+def no_hidden_parallels(cp, state, i):
+
+if i == 0: return True
+
+return not forms_parallel_5th_or_8ve(state\["cp"\]\[i-1\], cp,
+
+state\["cantus"\]\[i-1\], state\["cantus"\]\[i\])
+
+**3.4 Melodic Fitness (§ 4)**
+
+def melodic_ok(cp, state, i):
+
+line = state\["cp"\]
+
+return ( leap_size_ok(line, i) # 4.1
+
+and leap_compensation_ok(line, i) # 4.2
+
+and no_pitch_triplet(line, i) # 4.3
+
+and no_melodic_tritone(line, i) # 4.4
+
+and within_range(line\[i\]) ) # 4.5
+
+**3.5 Spacing / Voice-Crossing (§ 5)**
+
+def spacing_ok(cp, state, i):
+
+interval = abs(semitone_distance(cp, state\["cantus"\]\[i\]))
+
+return ( interval <= 18 # ≤ 11th (5.3)
+
+and not excessive_closeness(cp, state, i)
+
+and acceptable_crossing(cp, state, i) ) # 5.2
+
+**3.6 Modal & Accidental Compliance (§ 1.5)**
+
+def accidental_ok(cp, state, i):
+
+if is_accidental(cp):
+
+cf_last_idx = len(state\["cantus"\]) - 1
+
+if i == cf_last_idx - 1 and leading_tone_ok(cp, state): return True
+
+if removes_mi_fa_tritone(state\["cp"\], i): return True
+
+return False
+
+return True
+
+**4\. Helper Tables & Predicates**
+
+- perfect = {"P1","P5","P8"}
+- imperfect = {"m3","M3","m6","M6"}
+- motion_matrix implements the four legal progressions (3.2).
+- modal_scale(final, mode) returns the diatonic pitch-set of that mode.
+- licensed_accidental(...) implements § 1.2 third column.
+
+**5\. Interface End-Points**
+
+| **Function** | **Input** | **Output** | **Behaviour** |
+| --- | --- | --- | --- |
+| analyse_mode(cantus) | Cantus | (Mode, Species) | Throws ModalError on failure. Implements section 1. |
+| generate_counterpoint(cantus, position) | Cantus, "above"/"below" | Counterpt | Returns a fully-validated CP or raises NoSolutionError. Relies on rules 2–6. |
+| validate_counterpoint(cantus, cp, position) | Cantus, Counterpt, "above"/"below" | True / list\[RuleError\] | Checks an existing CP against _all_ constraints, reporting first violation encountered. |
+
+**Usage Example (in an LLM-powered composition endpoint)**
+
+cantus = \["D4","E4","F4","G4","A4","G4","F4","E4","D4"\] # Dorian
+
+mode, species = analyse_mode(cantus)
+
+state = {
+
+"cantus" : cantus,
+
+"cp" : \[\],
+
+"mode" : mode,
+
+"species" : species,
+
+"position" : "above" # user choice
+
+}
+
+counterpoint = generate_counterpoint(\*\*state)
+
+If generate_counterpoint exhausts every branch without success it throws NoSolutionError, signalling that _with the current cantus_ no first-species line can satisfy every rule (rare but possible).
+
+**This specification is deterministic and exhaustive:**
+
+- Every rule in sections 1–5 translates to a boolean predicate.
+- Section 6 becomes a depth-first search with backtracking driven by those predicates.
+- The API surfaces _analyse_, _generate_, and _validate_ endpoints, allowing any LLM or external program to enforce or explore strict first-species counterpoint exactly as in Fux’s _Gradus_.
+
+### Output Format (MUSICXML)
+
+Please compose the music in MusicXML format and make sure the file is renderable. Do not put unnecessary brackets or delimiters such as ``` at the beginning or end.
+
+### Encoded MUSICXML Source
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">
+  <work>
+    <work-title>Cantus firmus Fux</work-title>
+    </work>
+  <identification>
+    <creator type="composer">Compositeur Inconnu</creator>
+    <encoding>
+      <software>MuseScore 4.5.2</software>
+      <encoding-date>2025-09-08</encoding-date>
+      <supports element="accidental" type="yes"/>
+      <supports element="beam" type="yes"/>
+      <supports element="print" attribute="new-page" type="no"/>
+      <supports element="print" attribute="new-system" type="no"/>
+      <supports element="stem" type="yes"/>
+      </encoding>
+    </identification>
+  <part-list>
+    <part-group type="start" number="1">
+      <group-symbol>none</group-symbol>
+      </part-group>
+    <score-part id="P1">
+      <part-name>Solo Vocal</part-name>
+      <score-instrument id="P1-I1">
+        <instrument-name>Solo Vocal</instrument-name>
+        <instrument-sound>voice.vocals</instrument-sound>
+        </score-instrument>
+      <midi-device id="P1-I1" port="1"></midi-device>
+      <midi-instrument id="P1-I1">
+        <midi-channel>1</midi-channel>
+        <midi-program>53</midi-program>
+        <volume>78.7402</volume>
+        <pan>0</pan>
+        </midi-instrument>
+      </score-part>
+    <part-group type="stop" number="1"/>
+    </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key>
+          <fifths>0</fifths>
+          <mode>none</mode>
+          </key>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+          </time>
+        <staves>2</staves>
+        <clef number="1">
+          <sign>G</sign>
+          <line>2</line>
+          </clef>
+        <clef number="2">
+          <sign>G</sign>
+          <line>2</line>
+          </clef>
+        </attributes>
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>A</step>
+          <octave>3</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="2">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="3">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>B</step>
+          <octave>3</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="4">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="5">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="6">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="7">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>F</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="8">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>E</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="9">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>D</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="10">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>C</step>
+          <octave>4</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="11">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>B</step>
+          <octave>3</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      </measure>
+    <measure number="12">
+      <note>
+        <rest measure="yes"/>
+        <duration>4</duration>
+        <voice>1</voice>
+        <staff>1</staff>
+        </note>
+      <backup>
+        <duration>4</duration>
+        </backup>
+      <note>
+        <pitch>
+          <step>A</step>
+          <octave>3</octave>
+          </pitch>
+        <duration>4</duration>
+        <voice>5</voice>
+        <type>whole</type>
+        <staff>2</staff>
+        </note>
+      <barline location="right">
+        <bar-style>light-light</bar-style>
+        </barline>
+      </measure>
+    </part>
+  </score-partwise>

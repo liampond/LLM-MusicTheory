@@ -47,7 +47,6 @@ pip-wheel-metadata/
 ########################################
 # Project runtime outputs
 ########################################
-outputs/
 outputs_backup_*/
 logs/
 *.log
