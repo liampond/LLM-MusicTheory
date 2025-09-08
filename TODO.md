@@ -1,1 +1,0 @@
-Figure out why Pierre doesn't have all models in copilot

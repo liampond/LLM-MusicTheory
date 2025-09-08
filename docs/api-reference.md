@@ -476,7 +476,8 @@ runner = PromptRunner()
 response = runner.run_analysis("Q1b", "gemini-2.0-flash-exp")
 
 metadata = {
-    "timestamp": "2024-01-01T12:00:00",
+    "timestamp": "2025-09-08 19:39:50 EDT",  # Montreal timezone format
+    "api_duration": "100.78 seconds",        # API call duration
     "model_version": "gemini-2.0-flash-exp",
     "context_type": "musicxml",
     "researcher": "Your Name"
