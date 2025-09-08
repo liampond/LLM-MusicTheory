@@ -1,8 +1,9 @@
 # Configuration Guide
 
-Learn how to configure LLM-MusicTheory for your specific needs.
+Learn how to configure LLM-MusicTheory for your specific}
+```
 
-## Environment Configuration
+### Output Configurationvironment Configuration
 
 ### Environment Variables
 
@@ -13,7 +14,6 @@ Create a `.env` file in the project root:
 GOOGLE_API_KEY=your_google_api_key
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
-DEEPSEEK_API_KEY=your_deepseek_api_key
 
 # Logging Configuration
 LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
@@ -74,16 +74,6 @@ DEFAULT_SETTINGS = {
 #### Anthropic Claude
 ```python
 # In models/claude.py
-DEFAULT_SETTINGS = {
-    "temperature": 0.1,
-    "max_tokens": 4096,
-    "top_p": 1.0,
-}
-```
-
-#### DeepSeek
-```python
-# In models/deepseek.py
 DEFAULT_SETTINGS = {
     "temperature": 0.1,
     "max_tokens": 4096,
@@ -273,13 +263,11 @@ RATE_LIMIT_SETTINGS = {
         "openai": 3000,
         "anthropic": 1000,
         "google": 1500,
-        "deepseek": 500,
     },
     "tokens_per_minute": {
         "openai": 150000,
         "anthropic": 100000,
         "google": 32000,
-        "deepseek": 30000,
     }
 }
 ```

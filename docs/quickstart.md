@@ -63,7 +63,6 @@ Available model choices (use provider aliases for simplicity):
 - **Google Gemini**: `gemini`
 - **OpenAI ChatGPT**: `chatgpt`  
 - **Anthropic Claude**: `claude`
-- **DeepSeek**: `deepseek`
 
 *Note: Specific model versions (like `gpt-4o`) can be specified with `--model-name` parameter*
 

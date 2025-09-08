@@ -250,31 +250,6 @@ model = ClaudeModel(
 - `claude-3-5-sonnet-20241022`: Latest Sonnet model
 - `claude-3-5-haiku-20241022`: Fast Haiku model
 
-### DeepSeekModel
-
-DeepSeek model implementation.
-
-```python
-from llm_music_theory.models.deepseek import DeepSeekModel
-
-model = DeepSeekModel(
-    model_name="deepseek-v3",
-    temperature=0.1,
-    max_tokens=4096
-)
-```
-
-#### Constructor Parameters
-
-- `model_name` (str): DeepSeek model variant
-- `temperature` (float): Sampling temperature (default: 0.1)
-- `max_tokens` (int): Maximum response tokens (default: 4096)
-- `top_p` (float): Nucleus sampling parameter (default: 1.0)
-
-#### Available Models
-
-- `deepseek-v3`: Latest DeepSeek model
-
 ## Utility Functions
 
 ### Path Utilities
@@ -365,7 +340,6 @@ The system reads these environment variables:
 - `GOOGLE_API_KEY`: Google Gemini API key
 - `OPENAI_API_KEY`: OpenAI API key
 - `ANTHROPIC_API_KEY`: Anthropic API key
-- `DEEPSEEK_API_KEY`: DeepSeek API key
 - `LOG_LEVEL`: Logging level (default: "INFO")
 - `OUTPUT_BASE_DIR`: Custom output directory
 

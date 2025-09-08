@@ -20,7 +20,7 @@ Compare how different LLM architectures handle music theory:
 **Methodology**:
 ```bash
 # Systematic model comparison
-models=("gemini-2.0-flash-exp" "gpt-4o" "claude-3-5-sonnet-20241022" "deepseek-v3")
+models=("gemini-2.0-flash-exp" "gpt-4o" "claude-3-5-sonnet-20241022")
 questions=("Q1b")  # Expand with your question set
 
 for model in "${models[@]}"; do

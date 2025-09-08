@@ -83,7 +83,7 @@ echo "Results saved in output/context/$model/"
 
 question="Q1b"
 encoded_type="musicxml"
-models=("gemini-2.0-flash-exp" "gpt-4o" "claude-3-5-sonnet-20241022" "deepseek-v3")
+models=("gemini-2.0-flash-exp" "gpt-4o" "claude-3-5-sonnet-20241022")
 
 echo "Comparing models for $question with $encoded_type"
 
@@ -745,8 +745,7 @@ def generate_publication_dataset():
         "models": {
             "gemini-2.0-flash-exp": "Google Gemini 2.0 Flash",
             "gpt-4o": "OpenAI GPT-4 Omni", 
-            "claude-3-5-sonnet-20241022": "Anthropic Claude 3.5 Sonnet",
-            "deepseek-v3": "DeepSeek V3"
+            "claude-3-5-sonnet-20241022": "Anthropic Claude 3.5 Sonnet"
         },
         "formats": {
             "musicxml": "MusicXML",

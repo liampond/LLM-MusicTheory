@@ -41,7 +41,7 @@ For detailed information, see our comprehensive documentation:
 ## ✨ Key Features
 
 - **🔧 Modular Prompt Architecture**: Compose prompts from reusable, testable components
-- **🤖 Multi-LLM Provider Support**: ChatGPT, Claude, Gemini, and DeepSeek APIs
+- **🤖 Multi-LLM Provider Support**: ChatGPT, Claude, and Gemini APIs
 - **🎵 Comprehensive Music Format Support**: MEI, MusicXML, ABC notation, and Humdrum **kern
 - **🧪 Production-Grade Testing**: 84% test coverage with comprehensive mock API validation  
 - **📊 Context-Aware Prompts**: Toggle between contextual and non-contextual prompt modes
@@ -51,7 +51,7 @@ For detailed information, see our comprehensive documentation:
 ## 🚀 Features
 
 - **🔧 Modular Architecture**: Compose prompts from reusable components
-- **🤖 Multi-LLM Support**: ChatGPT, Claude, Gemini, and DeepSeek integration
+- **🤖 Multi-LLM Support**: ChatGPT, Claude, and Gemini integration
 - **🎵 Music Format Support**: MEI, MusicXML, ABC notation, and Humdrum
 - **🧪 Comprehensive Testing**: 47/56 tests passing with mock API validation
 - **📊 Context Learning**: Toggle between contextual and non-contextual prompts
@@ -165,7 +165,7 @@ If you see tests passing, you're ready to go! 🎉
    ```
    You may need to add this line to your `~/.bashrc` or `~/.zshrc` file and restart your terminal.y
 
-A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying ChatGPT, Claude, Gemini, and DeepSeek. Built for experimentation and evaluation on official Royal Conservatory of Music (RCM) exam questions.
+A modular toolkit for designing and testing music theory prompts for large language models (LLMs). Write modular prompt components, then use this tool to flexibly combine them and automate querying ChatGPT, Claude, and Gemini. Built for experimentation and evaluation on official Royal Conservatory of Music (RCM) exam questions.
 
 ## Setup
 1. **Clone the repository**
@@ -228,7 +228,6 @@ Edit `.env` and add your API keys:
 OPENAI_API_KEY=sk-your-openai-key-here
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here  
 GOOGLE_API_KEY=your-google-api-key-here
-DEEPSEEK_API_KEY=your-deepseek-key-here
 ```
 
 #### 3. Get API Keys
@@ -237,10 +236,9 @@ DEEPSEEK_API_KEY=your-deepseek-key-here
 |----------|---------|---------|-----------|
 | **OpenAI** | [platform.openai.com](https://platform.openai.com/api-keys) | $0.002/1K tokens | $5 credit |
 | **Anthropic** | [console.anthropic.com](https://console.anthropic.com/account/keys) | $0.003/1K tokens | $5 credit |
-| **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com/api_keys) | $0.0002/1K tokens | Best value |
 | **Google** | [ai.google.dev](https://ai.google.dev/gemini-api/docs/api-key) | $0.001/1K tokens | 1M tokens/day |
 
-> **💰 Cost Management**: Start with DeepSeek (cheapest) or Google (generous free tier). Monitor usage in provider dashboards.
+> **💰 Cost Management**: Use Google's generous free tier for development. Monitor usage in provider dashboards.
 
 ### Model Configuration
 
@@ -251,7 +249,6 @@ Default models are optimized for cost and performance. Customize in `src/llm_mus
 OPENAI_MODEL = "gpt-4o-mini"      # $0.0002/1K tokens
 ANTHROPIC_MODEL = "claude-3-haiku" # $0.0003/1K tokens  
 GOOGLE_MODEL = "gemini-1.5-flash"  # Free tier available
-DEEPSEEK_MODEL = "deepseek-chat"   # $0.0002/1K tokens
 ```
 
 ## 🎯 Usage
@@ -285,7 +282,7 @@ Run multiple prompts automatically for experiments:
 
 ```bash
 # Test multiple models on same prompt
-poetry run run-batch --models chatgpt,claude,deepseek --questions Q1b --datatypes mei
+poetry run run-batch --models chatgpt,claude,gemini --questions Q1b --datatypes mei
 
 # Full experiment across all combinations
 poetry run run-batch \
@@ -300,7 +297,7 @@ poetry run run-batch \
 
 | Option | Required | Description | Example Values |
 |--------|----------|-------------|---------|
-| `--model(s)` | ✅ | LLM provider(s) | `chatgpt`, `claude`, `gemini`, `deepseek` |
+| `--model(s)` | ✅ | LLM provider(s) | `chatgpt`, `claude`, `gemini` |
 | `--question(s)` | ✅ | Question ID(s) | `Q1a`, `Q1b`, `Q2a` |
 | `--datatype(s)` | ✅ | Music encoding(s) | `mei`, `musicxml`, `abc`, `humdrum` |
 | `--context` | ❌ | Include context guides | flag (present = with context) |
@@ -375,7 +372,6 @@ Settings and configurations can be changed in `src/llm_music_theory/config/setti
 
 - **[OpenAI ChatGPT](https://platform.openai.com/docs/pricing):**
 - **[Anthropic Claude](https://docs.anthropic.com/en/docs/about-claude/models/overview):**
-- **[DeepSeek](https://api-docs.deepseek.com/quick_start/pricing):**
 - **[Google Gemini](https://ai.google.dev/gemini-api/docs/models):**
 
 ## Run a Single Prompt
@@ -391,7 +387,7 @@ Legacy still accepted (alias): `--question Q1b`.
 
 ### Common Flags (updated)
 
-- `--model` (required): LLM provider: `chatgpt`, `claude`, `gemini`, `deepseek`
+- `--model` (required): LLM provider: `chatgpt`, `claude`, `gemini`
 - `--file` (required): File ID (stem of encoded file, e.g. `Q1b`)
 - `--datatype` (required): Encoding format: `mei`, `musicxml`, `abc`, `humdrum`
 - `--context`: Include contextual guides
@@ -454,8 +450,7 @@ LLM-MusicTheory/
 │   │   ├── base.py                # Abstract base classes
 │   │   ├── chatgpt.py             # OpenAI ChatGPT
 │   │   ├── claude.py              # Anthropic Claude
-│   │   ├── gemini.py              # Google Gemini
-│   │   └── deepseek.py            # DeepSeek integration
+│   │   └── gemini.py              # Google Gemini
 │   ├── prompts/                    # Prompt building system
 │   │   └── prompt_builder.py      # Modular prompt composition
 │   └── utils/                      # Utility functions
@@ -694,7 +689,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Royal Conservatory of Music for official exam materials
-- OpenAI, Anthropic, Google, and DeepSeek for LLM API access
+- OpenAI, Anthropic, and Google for LLM API access
 - Python Poetry for excellent dependency management
 - The open-source community for inspiring this project's architecture
 
@@ -808,7 +803,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Royal Conservatory of Music (RCM)** for exam question data
-- **OpenAI, Anthropic, Google, DeepSeek** for LLM APIs
+- **OpenAI, Anthropic, Google** for LLM APIs
 - **Music encoding communities** for MEI, MusicXML, ABC, and Humdrum formats
 
 ## 📞 Support

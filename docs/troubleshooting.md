@@ -41,7 +41,6 @@ poetry install
 echo $GOOGLE_API_KEY
 echo $OPENAI_API_KEY
 echo $ANTHROPIC_API_KEY
-echo $DEEPSEEK_API_KEY
 ```
 
 **Solution**: Set the required environment variables
@@ -174,11 +173,6 @@ chmod 644 output/*.txt
 - Check message length limits
 - Verify API access for your region
 
-**DeepSeek Issues**:
-- Ensure proper API endpoint configuration
-- Check model availability
-- Verify authentication format
-
 ### Memory Issues
 
 **Issue**: Out of memory errors with large files
@@ -259,7 +253,7 @@ poetry --version
 poetry show
 
 # Environment variables
-env | grep -E "(GOOGLE|OPENAI|ANTHROPIC|DEEPSEEK)_API_KEY"
+env | grep -E "(GOOGLE|OPENAI|ANTHROPIC)_API_KEY"
 ```
 
 ### Report Issues

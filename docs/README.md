@@ -72,7 +72,6 @@ graph TD
     F --> G[OpenAI ChatGPT]
     F --> H[Anthropic Claude]
     F --> I[Google Gemini]
-    F --> J[DeepSeek]
 ```
 
 ### Component Responsibilities
@@ -166,7 +165,7 @@ poetry run run-single [OPTIONS]
 ```
 
 **Options:**
-- `--model {chatgpt,claude,gemini,deepseek}`: LLM provider (required)
+- `--model {chatgpt,claude,gemini}`: LLM provider (required)
 - `--file-id TEXT` / `--question TEXT`: Identifier (legacy alias retained)
 - `--datatype {mei,musicxml,abc,humdrum}`: Music format (required)
 - `--context`: Include context guides
@@ -207,7 +206,7 @@ poetry run run-batch [OPTIONS]
 
 ### Cost Management
 
-1. Start with lower‑cost providers (e.g. DeepSeek) while iterating
+1. Start with lower‑cost providers while iterating
 2. Leverage free tiers (Gemini) before using premium models
 3. Monitor dashboards; set soft internal token budgets
 4. Batch experiments; reuse compiled prompt bundles when possible
@@ -268,7 +267,7 @@ Programmatic batch processing:
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.core.dispatcher import get_llm
 
-models = ["chatgpt", "claude", "deepseek"]
+models = ["chatgpt", "claude", "gemini"]
 questions = ["Q1a", "Q1b", "Q2a"]
 datatypes = ["mei", "musicxml"]
 
@@ -302,7 +301,7 @@ A: Ensure Poetry environment is active: `poetry shell` and `poetry install`
 A: Check `.env` file format. No spaces around `=` sign.
 
 **Q: High API costs**
-A: Use DeepSeek or Google's free tier. Set `max_tokens` limits.
+A: Use Google's free tier. Set `max_tokens` limits.
 
 ### Debug Mode
 

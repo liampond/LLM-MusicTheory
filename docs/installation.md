@@ -42,10 +42,6 @@ You'll need API keys from at least one LLM provider:
 - Get API key from [Anthropic Console](https://console.anthropic.com/)
 - Set environment variable: `export ANTHROPIC_API_KEY="your-key"`
 
-### DeepSeek
-- Get API key from [DeepSeek Platform](https://platform.deepseek.com/)
-- Set environment variable: `export DEEPSEEK_API_KEY="your-key"`
-
 ## Environment Variables
 
 Create a `.env` file in the project root:
@@ -55,7 +51,6 @@ Create a `.env` file in the project root:
 GOOGLE_API_KEY=your_google_api_key
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
-DEEPSEEK_API_KEY=your_deepseek_api_key
 
 # Optional: Logging configuration
 LOG_LEVEL=INFO
