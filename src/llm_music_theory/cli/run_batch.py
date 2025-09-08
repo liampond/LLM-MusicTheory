@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from time import sleep
 from dotenv import load_dotenv
 
-from llm_music_theory.core.dispatcher import get_llm
+from llm_music_theory.core.dispatcher import get_llm, get_llm_with_model_name, detect_model_provider
 from llm_music_theory.core.runner import PromptRunner
 from llm_music_theory.utils.path_utils import (
     find_project_root,
