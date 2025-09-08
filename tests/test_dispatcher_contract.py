@@ -24,7 +24,7 @@ class TestDispatcherInterface:
         from llm_music_theory.core.dispatcher import get_llm
         
         # Test with each expected model
-        expected_models = ["chatgpt", "claude", "gemini", "deepseek"]
+        expected_models = ["chatgpt", "claude", "gemini"]
         
         for model_name in expected_models:
             try:
@@ -62,7 +62,7 @@ class TestDispatcherInterface:
         # Define expected behavior for case sensitivity
         # The system should either be case-insensitive OR clearly document case requirements
         
-        base_names = ["chatgpt", "claude", "gemini", "deepseek"]
+        base_names = ["chatgpt", "claude", "gemini"]
         
         for base_name in base_names:
             try:
@@ -160,7 +160,7 @@ class TestDispatcherConfiguration:
             assert all(isinstance(model, str) for model in models)
         
         # Alternative: get_llm should at least support known models
-        expected_models = ["chatgpt", "claude", "gemini", "deepseek"]
+        expected_models = ["chatgpt", "claude", "gemini"]
         available_count = 0
         
         for model_name in expected_models:

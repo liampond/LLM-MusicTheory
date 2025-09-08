@@ -28,9 +28,9 @@ class MockLLMForIntegration(LLMInterface):
 class TestCLIIntegration:
     @pytest.fixture
     def mock_all_models(self):
-        return {name: MockLLMForIntegration(name) for name in ["chatgpt", "claude", "gemini", "deepseek"]}
+        return {name: MockLLMForIntegration(name) for name in ["chatgpt", "claude", "gemini"]}
 
-    @patch.dict(os.environ, {"OPENAI_API_KEY": "x", "ANTHROPIC_API_KEY": "x", "GOOGLE_API_KEY": "x", "DEEPSEEK_API_KEY": "x"})
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "x", "ANTHROPIC_API_KEY": "x", "GOOGLE_API_KEY": "x"})
     def test_prompt_compilation_workflow(self, mock_all_models):
         root = Path(__file__).parent.parent
         data_dir = root / "data" / "fux-counterpoint"

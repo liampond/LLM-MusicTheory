@@ -43,7 +43,6 @@ class TestConfigurationContract:
             'OPENAI_API_KEY': 'test-openai-key',
             'ANTHROPIC_API_KEY': 'test-anthropic-key',
             'GOOGLE_API_KEY': 'test-google-key',
-            'DEEPSEEK_API_KEY': 'test-deepseek-key'
         }
         
         with patch.dict('os.environ', env_vars):

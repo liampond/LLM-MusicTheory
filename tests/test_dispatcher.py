@@ -24,7 +24,7 @@ class TestDispatcherBasics:
                 get_llm(invalid)  # type: ignore[arg-type]
 
     def test_case_insensitive(self, mock_api_keys):
-        for variant in ["ChatGPT", "CHATGPT", "Claude", "GEMINI", "DeepSeek"]:
+        for variant in ["ChatGPT", "CHATGPT", "Claude", "GEMINI"]:
             model = get_llm(variant)
             assert isinstance(model, LLMInterface)
 

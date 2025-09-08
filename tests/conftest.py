@@ -40,7 +40,6 @@ _API_KEY_ENV_VARS: List[str] = [
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "GOOGLE_API_KEY",
-    "DEEPSEEK_API_KEY",
 ]
 
 
@@ -166,7 +165,6 @@ def mock_api_keys(monkeypatch) -> Dict[str, str]:
         "openai": "test-openai-key",
         "anthropic": "test-anthropic-key",
         "google": "test-google-key",
-        "deepseek": "test-deepseek-key",
     }
     for key, value in mock_keys.items():
         monkeypatch.setenv(f"{key.upper()}_API_KEY", value)

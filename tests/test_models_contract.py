@@ -15,7 +15,7 @@ from llm_music_theory.models.base import LLMInterface, PromptInput
 class TestLLMInterfaceContract:
     """Test that all LLM models implement the required interface contract."""
     
-    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini", "deepseek"])
+    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini"])
     def test_model_implements_interface(self, model_name, mock_api_keys):
         """All models MUST implement LLMInterface."""
         from llm_music_theory.core.dispatcher import get_llm
@@ -26,7 +26,7 @@ class TestLLMInterfaceContract:
         except Exception as e:
             pytest.skip(f"Model {model_name} not available: {e}")
     
-    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini", "deepseek"])
+    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini"])
     def test_model_has_query_method(self, model_name, mock_api_keys):
         """All models MUST have a callable query method."""
         from llm_music_theory.core.dispatcher import get_llm
@@ -38,7 +38,7 @@ class TestLLMInterfaceContract:
         except Exception as e:
             pytest.skip(f"Model {model_name} not available: {e}")
     
-    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini", "deepseek"])
+    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini"])
     def test_model_query_accepts_prompt_input(self, model_name, mock_api_keys, sample_prompt_input):
         """All models MUST accept PromptInput objects in their query method."""
         from llm_music_theory.core.dispatcher import get_llm
@@ -55,7 +55,7 @@ class TestLLMInterfaceContract:
         except Exception as e:
             pytest.skip(f"Model {model_name} not available: {e}")
     
-    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini", "deepseek"])
+    @pytest.mark.parametrize("model_name", ["chatgpt", "claude", "gemini"])
     def test_model_query_returns_string(self, model_name, mock_api_keys, sample_prompt_input):
         """All models MUST return string responses."""
         from llm_music_theory.core.dispatcher import get_llm

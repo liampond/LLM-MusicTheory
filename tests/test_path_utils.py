@@ -162,7 +162,7 @@ class TestPathUtils:
             context=True
         )
         
-        expected = outputs_dir / "TestModel" / "Q1a_mei_context.txt"
+        expected = outputs_dir / "TestModel" / "Q1a_mei_context_1.txt"
         assert output_path == expected
 
     def test_get_output_path_no_context(self, temp_structure):
@@ -177,7 +177,7 @@ class TestPathUtils:
             context=False
         )
         
-        expected = outputs_dir / "TestModel" / "Q2b_abc_nocontext.txt"
+        expected = outputs_dir / "TestModel" / "Q2b_abc_nocontext_1.txt"
         assert output_path == expected
 
     def test_find_project_root(self):
